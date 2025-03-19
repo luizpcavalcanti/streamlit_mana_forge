@@ -2,27 +2,22 @@ import random
 import streamlit as st
 import json
 import openai
+import os
 
-# Set your OpenAI API key
-openai.api_key = "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"
+# Load OpenAI API Key securely from Streamlit Secrets
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# Define character races, classes, backgrounds, and genders
-races = [
-    "Human", "Elf", "Dwarf", "Halfling", "Gnome", "Half-Orc", "Tiefling", "Dragonborn", "Kobold", "Lizardfolk", "Minotaur",
-    "Troll", "Vampire", "Satyr", "Undead", "Lich", "Werewolf"
-]
+# Define character attributes
+races = ["Human", "Elf", "Dwarf", "Halfling", "Gnome", "Half-Orc", "Tiefling", "Dragonborn", "Kobold", "Lizardfolk", "Minotaur",
+         "Troll", "Vampire", "Satyr", "Undead", "Lich", "Werewolf"]
 
-classes = [
-    "Fighter", "Wizard", "Rogue", "Cleric", "Barbarian", "Sorcerer", "Bard", "Monk",
-    "Druid", "Ranger", "Paladin", "Warlock", "Artificer", "Blood Hunter", "Mystic",
-    "Warden", "Berserker", "Necromancer", "Trickster", "Beast Master", "Alchemist", "Pyromancer", "Dark Knight"
-]
+classes = ["Fighter", "Wizard", "Rogue", "Cleric", "Barbarian", "Sorcerer", "Bard", "Monk",
+           "Druid", "Ranger", "Paladin", "Warlock", "Artificer", "Blood Hunter", "Mystic",
+           "Warden", "Berserker", "Necromancer", "Trickster", "Beast Master", "Alchemist", "Pyromancer", "Dark Knight"]
 
-backgrounds = [
-    "Acolyte", "Folk Hero", "Sage", "Criminal", "Noble", "Hermit", "Outlander", "Entertainer",
-    "Artisan", "Sailor", "Soldier", "Charlatan", "Knight", "Pirate", "Spy", "Archaeologist", "Gladiator",
-    "Inheritor", "Haunted One", "Bounty Hunter", "Explorer", "Watcher", "Traveler", "Phantom", "Vigilante"
-]
+backgrounds = ["Acolyte", "Folk Hero", "Sage", "Criminal", "Noble", "Hermit", "Outlander", "Entertainer",
+               "Artisan", "Sailor", "Soldier", "Charlatan", "Knight", "Pirate", "Spy", "Archaeologist", "Gladiator",
+               "Inheritor", "Haunted One", "Bounty Hunter", "Explorer", "Watcher", "Traveler", "Phantom", "Vigilante"]
 
 genders = ["Male", "Female", "Non-binary"]
 
@@ -39,24 +34,34 @@ def generate_character(name, gender, race):
 # Function to generate an image using OpenAI's DALL·E
 def generate_character_image(character):
     description = f"A detailed fantasy character portrait of a {character['Race']} {character['Class']} wearing thematic attire. Background should match the character's class and personality."
-    response = openai.Image.create(
-        prompt=description,
-        n=1,
-        size="512x512"
-    )
-    return response["data"][0]["url"]
+    
+    try:
+        response = openai.Image.create(
+            prompt=description,
+            n=1,
+            size="512x512"
+        )
+        return response["data"][0]["url"]
+    except Exception as e:
+        st.error(f"Image generation failed: {e}")
+        return None  # Return None if image generation fails
 
 # Function to generate character history using GPT-4
 def generate_character_history(character):
     prompt = f"Create a short backstory for a {character['Race']} {character['Class']} named {character['Name']}. They come from a {character['Background']} background. The story should include their motivations, key life events, and an intriguing mystery."
-    response = openai.ChatCompletion.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "You are a creative storyteller crafting fantasy character backstories."},
-            {"role": "user", "content": prompt}
-        ]
-    )
-    return response["choices"][0]["message"]["content"]
+
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a creative storyteller crafting fantasy character backstories."},
+                {"role": "user", "content": prompt}
+            ]
+        )
+        return response["choices"][0]["message"]["content"]
+    except Exception as e:
+        st.error(f"Backstory generation failed: {e}")
+        return "No backstory available."
 
 # Function to load characters from a file
 def load_characters():
@@ -101,7 +106,13 @@ if st.button("Generate Character"):
         st.write(f"**Race:** {character['Race']}")
         st.write(f"**Class:** {character['Class']}")
         st.write(f"**Background:** {character['Background']}")
-        st.image(character["Image"], caption=f"{character['Name']} - {character['Race']} {character['Class']}")
+
+        # Check if image exists before displaying
+        if "Image" in character and character["Image"]:
+            st.image(character["Image"], caption=f"{character['Name']} - {character['Race']} {character['Class']}")
+        else:
+            st.warning("No image available for this character.")
+
         st.write("### Character History:")
         st.write(character["History"])
 
@@ -117,7 +128,13 @@ if characters:
                 st.write(f"- **Race:** {character['Race']}")
                 st.write(f"- **Class:** {character['Class']}")
                 st.write(f"- **Background:** {character['Background']}")
-                st.image(character["Image"], caption=f"{character['Name']} - {character['Race']} {character['Class']}")
+
+                # Check if image exists before displaying
+                if "Image" in character and character["Image"]:
+                    st.image(character["Image"], caption=f"{character['Name']} - {character['Race']} {character['Class']}")
+                else:
+                    st.warning("No image available for this character.")
+
                 st.write("### Character History:")
                 st.write(character["History"])
 else:
