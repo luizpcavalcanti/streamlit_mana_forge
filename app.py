@@ -46,7 +46,7 @@ def save_characters(characters):
         json.dump(characters, file, indent=4)
 
 # Streamlit UI
-st.title("D&D Character Generator")
+st.title("Mana Forge Character Generator")
 
 # Character selection dropdown
 selected_race = st.selectbox("Select a race:", races)
