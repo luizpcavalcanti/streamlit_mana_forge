@@ -1,7 +1,6 @@
 import random
 import streamlit as st
 import json
-import openai
 
 # Define character races, classes, backgrounds, and genders
 races = [
@@ -32,20 +31,6 @@ def generate_character(name, gender, race):
         "Class": random.choice(classes),
         "Background": random.choice(backgrounds)
     }
-
-# Function to generate a character description
-def generate_description(character):
-    return f"{character['Name']} is a {character['Gender'].lower()} {character['Race'].lower()} {character['Class'].lower()} with a background as a {character['Background'].lower()}."
-
-# Function to generate an image using OpenAI
-def generate_character_image(description):
-    response = openai.images.generate(
-        model="dall-e-2",
-        prompt=description,
-        n=1,
-        size="512x512"
-    )
-    return response.data[0].url
 
 # Function to load characters from a file
 def load_characters():
@@ -79,9 +64,6 @@ if st.button("Generate Character"):
         st.warning("Please enter a character name before generating.")
     else:
         character = generate_character(name, selected_gender, selected_race)
-        description = generate_description(character)
-        image_url = generate_character_image(description)
-        character["Image"] = image_url
         characters.append(character)
         save_characters(characters)
         
@@ -91,7 +73,6 @@ if st.button("Generate Character"):
         st.write(f"**Race:** {character['Race']}")
         st.write(f"**Class:** {character['Class']}")
         st.write(f"**Background:** {character['Background']}")
-        st.image(image_url, caption=character['Name'])
 
 # Display all characters as a list with expandable details
 st.write("### Saved Characters:")
@@ -105,7 +86,5 @@ if characters:
                 st.write(f"- **Race:** {character['Race']}")
                 st.write(f"- **Class:** {character['Class']}")
                 st.write(f"- **Background:** {character['Background']}")
-                if "Image" in character:
-                    st.image(character["Image"], caption=character["Name"])
 else:
     st.write("No characters available.")
