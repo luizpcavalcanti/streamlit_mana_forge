@@ -2,10 +2,9 @@ import random
 import streamlit as st
 import json
 import openai
-import os
 
-# Load your OpenAI API key from environment variables for security
-openai.api_key = st.secrets("OPENAI_API_KEY")
+# Securely load the OpenAI API key
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # Define character races, classes, backgrounds, and genders
 races = [
@@ -37,7 +36,7 @@ def generate_character(name, gender, race):
         "Background": random.choice(backgrounds)
     }
 
-# Function to generate an image using OpenAI's DALL·E (Updated for OpenAI >= 1.0.0)
+# Function to generate an image using OpenAI's DALL·E
 def generate_character_image(character):
     description = f"A detailed fantasy character portrait of a {character['Race']} {character['Class']} wearing thematic attire. Background should match the character's class and personality."
     
@@ -65,19 +64,6 @@ def generate_character_history(character):
     )
     return response["choices"][0]["message"]["content"]
 
-# Function to load characters from a file
-def load_characters():
-    try:
-        with open("characters.json", "r") as file:
-            return json.load(file)
-    except FileNotFoundError:
-        return []
-
-# Function to save characters to a file
-def save_characters(characters):
-    with open("characters.json", "w") as file:
-        json.dump(characters, file, indent=4)
-
 # Streamlit UI
 st.title("Mana Forge Character Generator")
 
@@ -88,9 +74,6 @@ selected_gender = st.selectbox("Select a gender:", genders)
 # Text input for character name
 name = st.text_input("Enter character name:", "")
 
-# Load characters
-characters = load_characters()
-
 # Generate character button
 if st.button("Generate Character"):
     if not name.strip():  # Ensure a name is provided
@@ -99,8 +82,6 @@ if st.button("Generate Character"):
         character = generate_character(name, selected_gender, selected_race)
         character["Image"] = generate_character_image(character)  # Generate and store image URL
         character["History"] = generate_character_history(character)  # Generate character backstory
-        characters.append(character)
-        save_characters(characters)
 
         st.success("Character Created Successfully!")
         st.write(f"**Name:** {character['Name']}")
@@ -108,7 +89,7 @@ if st.button("Generate Character"):
         st.write(f"**Race:** {character['Race']}")
         st.write(f"**Class:** {character['Class']}")
         st.write(f"**Background:** {character['Background']}")
-        
+
         if character["Image"]:  # Display the image only if it's generated successfully
             st.image(character["Image"], caption=f"{character['Name']} - {character['Race']} {character['Class']}")
         else:
@@ -116,19 +97,3 @@ if st.button("Generate Character"):
         
         st.write("### Character History:")
         st.write(character["History"])
-
-# Display all characters as a list with expandable details
-st.write("### Saved Characters:")
-if characters:
-    selected_character = st.selectbox("Select a character to view details:", [c["Name"] for c in characters])
-    
-    for character in characters:
-        if character["Name"] == selected_character:
-            with st.expander(f"{character['Name']} - Click to view details"):
-                st.write(f"- **Gender:** {character['Gender']}")
-                st.write(f"- **Race:** {character['Race']}")
-                st.write(f"- **Class:** {character['Class']}")
-                st.write(f"- **Background:** {character['Background']}")
-                
-                if character["Image"]:  # Display the image only if it's generated successfully
-                    st.image(character["Image"], caption=f"{character['Name']} - {character['Race']} {character['Class']}")
