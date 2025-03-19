@@ -36,29 +36,37 @@ def generate_character(name, gender, race):
         "Background": random.choice(backgrounds)
     }
 
-# Function to generate an image using OpenAI's DALL·E
-def generate_character_image(character):
-    description = f"A detailed fantasy character portrait of a {character['Race']} {character['Class']} wearing thematic attire. Background should match the character's class and personality."
-    
-    try:
-        # Use OpenAI's new Image API for image generation
-        response = openai.Image.create(
-            prompt=description,
-            n=1,
-            size="512x512"
-        )
-        return response['data'][0]['url']
-    except Exception as e:
-        st.error(f"Image generation failed: {e}")
-        return None  # Return None if image generation fails
-
-# Function to generate character history using GPT-4
+# Function to generate a character history using GPT-4
 def generate_character_history(character):
     prompt = f"Create a short backstory for a {character['Race']} {character['Class']} named {character['Name']}. They come from a {character['Background']} background. The story should include their motivations, key life events, and an intriguing mystery."
     response = openai.ChatCompletion.create(
         model="gpt-4o-mini",
         messages=[ 
             {"role": "system", "content": "You are a creative storyteller crafting fantasy character backstories."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+    return response["choices"][0]["message"]["content"]
+
+# Function to generate a quest tied to the character's background
+def generate_quest(character):
+    prompt = f"Create a quest for a {character['Race']} {character['Class']} with a {character['Background']} background. The quest should be personalized, based on their background, and should lead to an intriguing plot."
+    response = openai.ChatCompletion.create(
+        model="gpt-4o-mini",
+        messages=[ 
+            {"role": "system", "content": "You are a creative quest designer crafting personalized quests."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+    return response["choices"][0]["message"]["content"]
+
+# Function to generate an NPC related to the character's background
+def generate_npc(character):
+    prompt = f"Create an NPC related to a {character['Race']} {character['Class']} with a {character['Background']} background. The NPC should have a significant role in the character's story."
+    response = openai.ChatCompletion.create(
+        model="gpt-4o-mini",
+        messages=[ 
+            {"role": "system", "content": "You are a creative storyteller crafting NPCs related to a character's background."},
             {"role": "user", "content": prompt}
         ]
     )
@@ -80,8 +88,9 @@ if st.button("Generate Character"):
         st.warning("Please enter a character name before generating.")
     else:
         character = generate_character(name, selected_gender, selected_race)
-        character["Image"] = generate_character_image(character)  # Generate and store image URL
         character["History"] = generate_character_history(character)  # Generate character backstory
+        character["Quest"] = generate_quest(character)  # Generate personalized quest
+        character["NPC"] = generate_npc(character)  # Generate NPC related to character's background
 
         st.success("Character Created Successfully!")
         st.write(f"**Name:** {character['Name']}")
@@ -90,10 +99,11 @@ if st.button("Generate Character"):
         st.write(f"**Class:** {character['Class']}")
         st.write(f"**Background:** {character['Background']}")
 
-        if character["Image"]:  # Display the image only if it's generated successfully
-            st.image(character["Image"], caption=f"{character['Name']} - {character['Race']} {character['Class']}")
-        else:
-            st.warning("Failed to generate image.")
-        
         st.write("### Character History:")
         st.write(character["History"])
+
+        st.write("### Character Quest:")
+        st.write(character["Quest"])
+
+        st.write("### Related NPC:")
+        st.write(character["NPC"])
