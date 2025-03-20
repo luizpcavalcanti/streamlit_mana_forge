@@ -2,6 +2,11 @@ import random
 import streamlit as st
 import json
 import openai
+import os
+import shutil
+from io import BytesIO
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
 
 # Securely load the OpenAI API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
@@ -58,8 +63,57 @@ def generate_character_image(character):
     )
     return response["data"][0]["url"]
 
+# Function to generate NPC
+def generate_npc():
+    npc_name = random.choice(["Aelric", "Talia", "Morthos", "Kaelen", "Elyssa", "Varian", "Lilith"])
+    npc_role = random.choice(["merchant", "guard", "wizard", "priest", "knight", "bard", "rogue", "hunter"])
+    npc_backstory = f"{npc_name} is a {npc_role} with a mysterious past, often seen in the tavern sharing tales of great adventures and hidden treasures."
+    return {"name": npc_name, "role": npc_role, "backstory": npc_backstory}
+
+# Function to generate quest
+def generate_quest():
+    quest_title = random.choice(["Rescue the Princess", "Retrieve the Lost Artifact", "Defeat the Dark Sorcerer", "Find the Hidden Treasure"])
+    quest_description = f"Your task is to embark on an epic adventure to {quest_title}. Along the way, you'll face challenges, make allies, and confront enemies."
+    return {"title": quest_title, "description": quest_description}
+
+# Function to generate PDF
+def create_pdf(character, npc, quest):
+    buffer = BytesIO()
+    c = canvas.Canvas(buffer, pagesize=letter)
+    
+    # Character info
+    c.drawString(100, 750, f"Character Name: {character['Name']}")
+    c.drawString(100, 730, f"Gender: {character['Gender']}")
+    c.drawString(100, 710, f"Race: {character['Race']}")
+    c.drawString(100, 690, f"Class: {character['Class']}")
+    c.drawString(100, 670, f"Background: {character['Background']}")
+    c.drawString(100, 650, f"History: {character['History']}")
+    
+    # NPC info
+    c.drawString(100, 620, f"NPC Name: {npc['name']}")
+    c.drawString(100, 600, f"NPC Role: {npc['role']}")
+    c.drawString(100, 580, f"NPC Backstory: {npc['backstory']}")
+    
+    # Quest info
+    c.drawString(100, 550, f"Quest Title: {quest['title']}")
+    c.drawString(100, 530, f"Quest Description: {quest['description']}")
+    
+    c.showPage()
+    c.save()
+    
+    buffer.seek(0)
+    return buffer
+
 # Streamlit UI
 st.title("Mana Forge Character Generator")
+
+# Session state initialization for persistence
+if "character" not in st.session_state:
+    st.session_state.character = None
+if "npc" not in st.session_state:
+    st.session_state.npc = None
+if "quest" not in st.session_state:
+    st.session_state.quest = None
 
 # Character selection dropdown
 selected_race = st.selectbox("Select a race:", races)
@@ -73,22 +127,35 @@ if st.button("Generate Character"):
     if not name.strip():  # Ensure a name is provided
         st.warning("Please enter a character name before generating.")
     else:
-        character = generate_character(name, selected_gender, selected_race)
-        character["History"] = generate_character_history(character)  # Generate character backstory
-        character["Image"] = generate_character_image(character)  # Generate character image
+        st.session_state.character = generate_character(name, selected_gender, selected_race)
+        st.session_state.character["History"] = generate_character_history(st.session_state.character)  # Generate character backstory
+        st.session_state.character["Image"] = generate_character_image(st.session_state.character)  # Generate character image
+        
+        st.session_state.npc = generate_npc()  # Generate NPC
+        st.session_state.quest = generate_quest()  # Generate quest
 
         st.success("Character Created Successfully!")
-        st.write(f"**Name:** {character['Name']}")
-        st.write(f"**Gender:** {character['Gender']}")
-        st.write(f"**Race:** {character['Race']}")
-        st.write(f"**Class:** {character['Class']}")
-        st.write(f"**Background:** {character['Background']}")
-
+        st.write(f"**Name:** {st.session_state.character['Name']}")
+        st.write(f"**Gender:** {st.session_state.character['Gender']}")
+        st.write(f"**Race:** {st.session_state.character['Race']}")
+        st.write(f"**Class:** {st.session_state.character['Class']}")
+        st.write(f"**Background:** {st.session_state.character['Background']}")
+        
         st.write("### Character History:")
-        st.write(character["History"])
-
+        st.write(st.session_state.character["History"])
+        
         st.write("### Character Portrait:")
-        st.image(character["Image"], caption="Generated Character Portrait")
+        st.image(st.session_state.character["Image"], caption="Generated Character Portrait")
+
+        # NPC and Quest Display
+        st.write("### NPC:")
+        st.write(f"**Name:** {st.session_state.npc['name']}")
+        st.write(f"**Role:** {st.session_state.npc['role']}")
+        st.write(f"**Backstory:** {st.session_state.npc['backstory']}")
+
+        st.write("### Quest:")
+        st.write(f"**Title:** {st.session_state.quest['title']}")
+        st.write(f"**Description:** {st.session_state.quest['description']}")
 
         # Optional buttons for generating more images and creating PDFs
         if st.button("Generate 3D Art Assets (Turnarounds)"):
@@ -97,4 +164,13 @@ if st.button("Generate Character"):
         
         if st.button("Download All Assets as PDF and ZIP"):
             st.write("Generating PDF and ZIP...")
-            # Add logic to generate and download assets in PDF and ZIP formats (this is a placeholder for now)
+            # Generate PDF
+            pdf = create_pdf(st.session_state.character, st.session_state.npc, st.session_state.quest)
+            
+            # Save PDF to disk or stream it as download
+            st.download_button(
+                label="Download PDF",
+                data=pdf,
+                file_name=f"{st.session_state.character['Name']}_character.pdf",
+                mime="application/pdf"
+            )
