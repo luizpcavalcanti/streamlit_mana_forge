@@ -64,18 +64,42 @@ def generate_character_image(character):
     )
     return response["data"][0]["url"]
 
-# Function to generate NPC
 def generate_npc():
-    npc_name = random.choice(["Aelric", "Talia", "Morthos", "Kaelen", "Elyssa", "Varian", "Lilith"])
-    npc_role = random.choice(["merchant", "guard", "wizard", "priest", "knight", "bard", "rogue", "hunter"])
+    npc_prompt = "Generate a unique fantasy NPC name and their profession."
+    npc_response = openai.ChatCompletion.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": npc_prompt}]
+    )
+    npc_text = npc_response["choices"][0]["message"]["content"].strip().split(", ")
+    
+    if len(npc_text) == 2:
+        npc_name, npc_role = npc_text
+    else:
+        npc_name = npc_text[0]
+        npc_role = random.choice(["merchant", "guard", "wizard", "priest", "knight", "bard", "rogue", "hunter"])
+
     npc_backstory = f"{npc_name} is a {npc_role} with a mysterious past, often seen in the tavern sharing tales of great adventures and hidden treasures."
+    
     return {"name": npc_name, "role": npc_role, "backstory": npc_backstory}
 
-# Function to generate quest
+
 def generate_quest():
-    quest_title = random.choice(["Rescue the Princess", "Retrieve the Lost Artifact", "Defeat the Dark Sorcerer", "Find the Hidden Treasure"])
-    quest_description = f"Your task is to embark on an epic adventure to {quest_title}. Along the way, you'll face challenges, make allies, and confront enemies."
-    return {"title": quest_title, "description": quest_description}
+    quest_prompt = "Create a unique and engaging fantasy quest. Include a title and a brief description."
+    quest_response = openai.ChatCompletion.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": quest_prompt}]
+    )
+    
+    quest_text = quest_response["choices"][0]["message"]["content"].strip().split("\n", 1)
+    
+    if len(quest_text) == 2:
+        quest_title, quest_description = quest_text
+    else:
+        quest_title = "A Mysterious Journey"
+        quest_description = quest_text[0]
+
+    return {"title": quest_title.strip(), "description": quest_description.strip()}
+
 
 # Function to generate PDF
 def create_pdf(character, npc, quest):
