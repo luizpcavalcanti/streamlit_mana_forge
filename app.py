@@ -63,7 +63,6 @@ def generate_character_image(character):
         size="1024x1024"
     )
     return response["data"][0]["url"]
-
 # Function to generate NPC (name, role, and backstory) using GPT-4
 def generate_npc():
     prompt = "Create an NPC character for a D&D game. Provide the NPC's name, role (e.g., merchant, guard, wizard), and a short backstory that fits within a fantasy adventure setting."
@@ -75,11 +74,19 @@ def generate_npc():
         ]
     )
     npc_info = response["choices"][0]["message"]["content"]
-    # Extracting NPC information
+    # Split the NPC info based on new lines
     npc_lines = npc_info.split('\n')
-    npc_name = npc_lines[0].strip().split(':')[1].strip()
-    npc_role = npc_lines[1].strip().split(':')[1].strip()
-    npc_backstory = npc_lines[2].strip().split(':')[1].strip()
+
+    # Try extracting the NPC details based on the format
+    try:
+        npc_name = npc_lines[0].strip()  # First line should contain the NPC name
+        npc_role = npc_lines[1].strip()  # Second line should contain the NPC role
+        npc_backstory = npc_lines[2].strip()  # Third line should contain the NPC backstory
+    except IndexError:
+        npc_name = "Unknown NPC"
+        npc_role = "Unknown Role"
+        npc_backstory = "No backstory available."
+
     return {"name": npc_name, "role": npc_role, "backstory": npc_backstory}
 
 # Function to generate a quest (title and description) using GPT-4
