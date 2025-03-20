@@ -131,17 +131,17 @@ def create_pdf(character, npc, quest):
 # Streamlit UI
 st.title("Mana Forge Character Generator")
 
-# Checkboxes for additional image generation
-generate_turnaround = st.checkbox("Generate 360° Turnaround Image for 3D Models")
-generate_location = st.checkbox("Generate Image of Character's Place of Origin")
-generate_extra_images = st.checkbox("Generate Extra 2 Character Images")
-
 # Character selection dropdown
 selected_race = st.selectbox("Select a race:", races)
 selected_gender = st.selectbox("Select a gender:", genders)
 
 # Text input for character name
 name = st.text_input("Enter character name:", "")
+
+# Checkboxes for additional image generation
+generate_turnaround = st.checkbox("Generate 360° Turnaround Image for 3D Models")
+generate_location = st.checkbox("Generate Image of Character's Place of Origin")
+generate_extra_images = st.checkbox("Generate Extra 2 Character Images")
 
 # Generate character button
 if st.button("Generate Character"):
