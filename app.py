@@ -2,11 +2,6 @@ import random
 import streamlit as st
 import json
 import openai
-import zipfile
-import os
-from io import BytesIO
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
 
 # Securely load the OpenAI API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
@@ -43,7 +38,7 @@ def generate_character(name, gender, race):
 
 # Function to generate a character history using GPT-4
 def generate_character_history(character):
-    prompt = f"Create a short backstory for a {character['Gender']} {character['Race']} {character['Class']} named {character['Name']}. They come from a {character['Background']} background. The story should include their motivations, key life events, and an intriguing mystery."
+    prompt = f"Create a short backstory for a {character['Race']} {character['Class']} named {character['Name']}. They come from a {character['Background']} background. The story should include their motivations, key life events, and an intriguing mystery."
     response = openai.ChatCompletion.create(
         model="gpt-4o-mini",
         messages=[ 
@@ -53,43 +48,15 @@ def generate_character_history(character):
     )
     return response["choices"][0]["message"]["content"]
 
-# Function to generate an image using OpenAI's DALL·E 3
+# Function to generate a full-body character image using OpenAI's DALL·E 3
 def generate_character_image(character):
-    prompt = f"A detailed fantasy portrait of a {character['Gender']} {character['Race']} {character['Class']} wearing attire fitting their {character['Background']} background."
+    prompt = f"A full-body portrait of a {character['Gender']} {character['Race']} {character['Class']} wearing attire fitting their {character['Background']} background. The character should be standing, in a heroic pose, with detailed armor/clothing and weapons appropriate for their class."
     response = openai.Image.create(
         model="dall-e-3",
         prompt=prompt,
         size="1024x1024"
     )
     return response["data"][0]["url"]
-
-# Function to generate an NPC using GPT-4
-def generate_npc():
-    npc_types = ["Merchant", "Guard", "Villager", "Wizard", "Blacksmith", "Farmer", "Thief", "Priest", "Healer"]
-    npc_type = random.choice(npc_types)
-    prompt = f"Create a detailed description of an NPC who is a {npc_type}. Include their appearance, personality, and background."
-    response = openai.ChatCompletion.create(
-        model="gpt-4o-mini",
-        messages=[ 
-            {"role": "system", "content": "You are a world-building assistant creating detailed NPCs."},
-            {"role": "user", "content": prompt}
-        ]
-    )
-    return response["choices"][0]["message"]["content"]
-
-# Function to generate a quest using GPT-4
-def generate_quest():
-    quest_types = ["Rescue", "Fetch", "Explore", "Defend", "Investigate", "Escort", "Destroy"]
-    quest_type = random.choice(quest_types)
-    prompt = f"Create a detailed quest where the player must {quest_type}. Include a backstory, objectives, rewards, and any challenges the player might face."
-    response = openai.ChatCompletion.create(
-        model="gpt-4o-mini",
-        messages=[ 
-            {"role": "system", "content": "You are a quest creator for a fantasy game."},
-            {"role": "user", "content": prompt}
-        ]
-    )
-    return response["choices"][0]["message"]["content"]
 
 # Streamlit UI
 st.title("Mana Forge Character Generator")
@@ -101,10 +68,6 @@ selected_gender = st.selectbox("Select a gender:", genders)
 # Text input for character name
 name = st.text_input("Enter character name:", "")
 
-# Check if character data exists in session state
-if "character" not in st.session_state:
-    st.session_state.character = None
-
 # Generate character button
 if st.button("Generate Character"):
     if not name.strip():  # Ensure a name is provided
@@ -113,9 +76,7 @@ if st.button("Generate Character"):
         character = generate_character(name, selected_gender, selected_race)
         character["History"] = generate_character_history(character)  # Generate character backstory
         character["Image"] = generate_character_image(character)  # Generate character image
-        
-        st.session_state.character = character  # Save character data in session state
-        
+
         st.success("Character Created Successfully!")
         st.write(f"**Name:** {character['Name']}")
         st.write(f"**Gender:** {character['Gender']}")
@@ -129,70 +90,11 @@ if st.button("Generate Character"):
         st.write("### Character Portrait:")
         st.image(character["Image"], caption="Generated Character Portrait")
 
-# Display previously generated character data if available
-if st.session_state.character:
-    character = st.session_state.character
-    st.write("### Previously Generated Character:")
-    st.write(f"**Name:** {character['Name']}")
-    st.write(f"**Gender:** {character['Gender']}")
-    st.write(f"**Race:** {character['Race']}")
-    st.write(f"**Class:** {character['Class']}")
-    st.write(f"**Background:** {character['Background']}")
-    st.write("### Character History:")
-    st.write(character["History"])
-    st.write("### Character Portrait:")
-    st.image(character["Image"], caption="Generated Character Portrait")
-
-    # Generate NPC and Quest
-    if st.button("Generate NPC"):
-        npc = generate_npc()
-        st.write("### NPC Description:")
-        st.write(npc)
-
-    if st.button("Generate Quest"):
-        quest = generate_quest()
-        st.write("### Quest Description:")
-        st.write(quest)
-
-    # Generate additional art assets
-    if st.button("Generate 3D Art Assets"):
-        # Generate 2 turn-around pictures (for 3D modeling or 360 preview)
-        st.write("Generating 2 turn-around images for 3D modeling...")
-        # Note: Here, you can add specific logic for generating turn-around images using DALL·E, for example.
-        # Currently, it's placeholder logic.
-        st.image(character["Image"], caption="Turnaround View 1")
-        st.image(character["Image"], caption="Turnaround View 2")
-
-    # Generate a ZIP file with all generated assets
-    if st.button("Download ZIP"):
-        # Prepare content
-        output_dir = f"/tmp/{character['Name']}_assets"
-        os.makedirs(output_dir, exist_ok=True)
-
-        # Save character data in a PDF
-        pdf_path = os.path.join(output_dir, f"{character['Name']}_character.pdf")
-        c = canvas.Canvas(pdf_path, pagesize=letter)
-        c.drawString(100, 750, f"Character: {character['Name']}")
-        c.drawString(100, 730, f"Gender: {character['Gender']}")
-        c.drawString(100, 710, f"Race: {character['Race']}")
-        c.drawString(100, 690, f"Class: {character['Class']}")
-        c.drawString(100, 670, f"Background: {character['Background']}")
-        c.drawString(100, 650, f"History: {character['History']}")
-        c.drawImage(character["Image"], 100, 500, width=200, height=200)
-        c.save()
-
-        # Add the character images and data to the ZIP file
-        zip_file_path = f"/tmp/{character['Name']}_assets.zip"
-        with zipfile.ZipFile(zip_file_path, 'w') as zipf:
-            zipf.write(pdf_path, os.path.basename(pdf_path))  # Add PDF to ZIP
-            # Optionally add the character images (both portrait and 3D art assets)
-            zipf.write(character["Image"], f"{character['Name']}_portrait.png")  # Add portrait image
-
-        # Provide a download link for the ZIP file
-        with open(zip_file_path, "rb") as f:
-            st.download_button(
-                label="Download All Character Assets",
-                data=f,
-                file_name=f"{character['Name']}_assets.zip",
-                mime="application/zip"
-            )
+        # Optional buttons for generating more images and creating PDFs
+        if st.button("Generate 3D Art Assets (Turnarounds)"):
+            st.write("Generating 3D turnarounds...")
+            # Add logic for 3D turnarounds (this is a placeholder for now)
+        
+        if st.button("Download All Assets as PDF and ZIP"):
+            st.write("Generating PDF and ZIP...")
+            # Add logic to generate and download assets in PDF and ZIP formats (this is a placeholder for now)
