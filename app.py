@@ -128,17 +128,13 @@ def create_pdf(character, npc, quest):
     
     buffer.seek(0)
     return buffer
-
 # Streamlit UI
 st.title("Mana Forge Character Generator")
 
-# Session state initialization for persistence
-if "character" not in st.session_state:
-    st.session_state.character = None
-if "npc" not in st.session_state:
-    st.session_state.npc = None
-if "quest" not in st.session_state:
-    st.session_state.quest = None
+# Checkboxes for additional image generation
+generate_turnaround = st.checkbox("Generate 360° Turnaround Image for 3D Models")
+generate_location = st.checkbox("Generate Image of Character's Place of Origin")
+generate_extra_images = st.checkbox("Generate Extra 2 Character Images")
 
 # Character selection dropdown
 selected_race = st.selectbox("Select a race:", races)
@@ -172,6 +168,24 @@ if st.button("Generate Character"):
         st.write("### Character Portrait:")
         st.image(st.session_state.character["Image"], caption="Generated Character Portrait")
 
+        # Generate additional images based on user choices
+        if generate_turnaround:
+            st.write("### 360° Turnaround Image:")
+            turnaround_image = generate_character_image(st.session_state.character)  # Replace with turnaround logic
+            st.image(turnaround_image, caption="360° Turnaround Image")
+
+        if generate_location:
+            st.write("### Character's Place of Origin:")
+            location_image = generate_character_image(st.session_state.character)  # Replace with location logic
+            st.image(location_image, caption="Place of Origin")
+
+        if generate_extra_images:
+            st.write("### Extra Character Images:")
+            extra_image_1 = generate_character_image(st.session_state.character)
+            extra_image_2 = generate_character_image(st.session_state.character)
+            st.image(extra_image_1, caption="Extra Image 1")
+            st.image(extra_image_2, caption="Extra Image 2")
+
         # NPC and Quest Display
         st.write("### NPC:")
         st.write(f"**Name:** {st.session_state.npc['name']}")
@@ -182,11 +196,7 @@ if st.button("Generate Character"):
         st.write(f"**Title:** {st.session_state.quest['title']}")
         st.write(f"**Description:** {st.session_state.quest['description']}")
 
-        # Optional buttons for generating more images and creating PDFs
-        if st.button("Generate 3D Art Assets (Turnarounds)"):
-            st.write("Generating 3D turnarounds...")
-            # Add logic for 3D turnarounds (this is a placeholder for now)
-        
+        # Optional buttons for downloading assets
         if st.button("Download All Assets as PDF and ZIP"):
             st.write("Generating PDF and ZIP...")
             # Generate PDF
@@ -199,3 +209,4 @@ if st.button("Generate Character"):
                 file_name=f"{st.session_state.character['Name']}_character.pdf",
                 mime="application/pdf"
             )
+
