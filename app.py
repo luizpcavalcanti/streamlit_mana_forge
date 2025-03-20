@@ -63,6 +63,30 @@ def generate_character_image(character):
     )
     return response["data"][0]["url"]
 
+# Function to generate NPC using AI
+def generate_npc():
+    prompt = "Generate a fantasy NPC with a name, role, and an interesting backstory."
+    response = openai.ChatCompletion.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You are a creative storyteller generating fantasy NPCs."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+    return json.loads(response["choices"][0]["message"]["content"])
+
+# Function to generate quest using AI
+def generate_quest():
+    prompt = "Generate a fantasy quest with a title and an engaging description."
+    response = openai.ChatCompletion.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You are a creative storyteller generating fantasy quests."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+    return json.loads(response["choices"][0]["message"]["content"])
+
 # Initialize session state
 if "character" not in st.session_state:
     st.session_state.character = None
