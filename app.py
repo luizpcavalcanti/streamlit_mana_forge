@@ -1,39 +1,102 @@
-Your issue is that Streamlit reruns the script from the top whenever a button is clicked, which resets all variables unless they're stored in `st.session_state`. You're already using `st.session_state` for some elements, but you need to ensure that your character, NPC, quest, and generated images persist properly.
+import random
+import streamlit as st
+import json
+import openai
+import os
+import shutil
+from io import BytesIO
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
 
-### **Fix:**
-1. Store all generated data (character, history, image, NPC, quest) in `st.session_state`.
-2. Display stored session state data outside the button click event.
+# Securely load the OpenAI API key
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 
-### **Updated Code Snippet:**
-Modify your character generation button like this:
+# Define character races, classes, backgrounds, and genders
+races = [
+    "Human", "Elf", "Dwarf", "Halfling", "Gnome", "Half-Orc", "Tiefling", "Dragonborn", "Kobold", "Lizardfolk", "Minotaur",
+    "Troll", "Vampire", "Satyr", "Undead", "Lich", "Werewolf"
+]
 
-```python
-# Generate character button
+classes = [
+    "Fighter", "Wizard", "Rogue", "Cleric", "Barbarian", "Sorcerer", "Bard", "Monk",
+    "Druid", "Ranger", "Paladin", "Warlock", "Artificer", "Blood Hunter", "Mystic",
+    "Warden", "Berserker", "Necromancer", "Trickster", "Beast Master", "Alchemist", "Pyromancer", "Dark Knight"
+]
+
+backgrounds = [
+    "Acolyte", "Folk Hero", "Sage", "Criminal", "Noble", "Hermit", "Outlander", "Entertainer",
+    "Artisan", "Sailor", "Soldier", "Charlatan", "Knight", "Pirate", "Spy", "Archaeologist", "Gladiator",
+    "Inheritor", "Haunted One", "Bounty Hunter", "Explorer", "Watcher", "Traveler", "Phantom", "Vigilante"
+]
+
+genders = ["Male", "Female", "Non-binary"]
+
+# Function to generate a random character
+def generate_character(name, gender, race):
+    return {
+        "Name": name,
+        "Gender": gender,
+        "Race": race,
+        "Class": random.choice(classes),
+        "Background": random.choice(backgrounds)
+    }
+
+# Function to generate a character history using GPT-4
+def generate_character_history(character):
+    prompt = f"Create a short backstory for a {character['Race']} {character['Class']} named {character['Name']}. They come from a {character['Background']} background. The story should include their motivations, key life events, and an intriguing mystery."
+    response = openai.ChatCompletion.create(
+        model="gpt-4o-mini",
+        messages=[ 
+            {"role": "system", "content": "You are a creative storyteller crafting fantasy character backstories."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+    return response["choices"][0]["message"]["content"]
+
+# Function to generate a full-body character image using OpenAI's DALL·E 3
+def generate_character_image(character):
+    prompt = f"A full-body portrait of a {character['Gender']} {character['Race']} {character['Class']} wearing attire fitting their {character['Background']} background. The character should be standing, in a heroic pose, with detailed armor/clothing and weapons appropriate for their class."
+    response = openai.Image.create(
+        model="dall-e-3",
+        prompt=prompt,
+        size="1024x1024"
+    )
+    return response["data"][0]["url"]
+
+# Initialize session state
+if "character" not in st.session_state:
+    st.session_state.character = None
+if "npc" not in st.session_state:
+    st.session_state.npc = None
+if "quest" not in st.session_state:
+    st.session_state.quest = None
+
+st.title("Mana Forge Character Generator")
+
+# Character selection dropdown
+selected_race = st.selectbox("Select a race:", races)
+selected_gender = st.selectbox("Select a gender:", genders)
+name = st.text_input("Enter character name:", "")
+
 if st.button("Generate Character"):
-    if not name.strip():  # Ensure a name is provided
+    if not name.strip():
         st.warning("Please enter a character name before generating.")
     else:
-        # Store in session state
         st.session_state.character = generate_character(name, selected_gender, selected_race)
-        st.session_state.character["History"] = generate_character_history(st.session_state.character)  
-        st.session_state.character["Image"] = generate_character_image(st.session_state.character)  
-
-        st.session_state.npc = generate_npc()  
-        st.session_state.quest = generate_quest()  
-
+        st.session_state.character["History"] = generate_character_history(st.session_state.character)
+        st.session_state.character["Image"] = generate_character_image(st.session_state.character)
+        st.session_state.npc = generate_npc()
+        st.session_state.quest = generate_quest()
         st.success("Character Created Successfully!")
 
-# Ensure stored data persists even after button clicks
 if st.session_state.character:
     st.write(f"**Name:** {st.session_state.character['Name']}")
     st.write(f"**Gender:** {st.session_state.character['Gender']}")
     st.write(f"**Race:** {st.session_state.character['Race']}")
     st.write(f"**Class:** {st.session_state.character['Class']}")
     st.write(f"**Background:** {st.session_state.character['Background']}")
-
     st.write("### Character History:")
     st.write(st.session_state.character["History"])
-
     st.write("### Character Portrait:")
     st.image(st.session_state.character["Image"], caption="Generated Character Portrait")
 
@@ -47,11 +110,3 @@ if st.session_state.quest:
     st.write("### Quest:")
     st.write(f"**Title:** {st.session_state.quest['title']}")
     st.write(f"**Description:** {st.session_state.quest['description']}")
-```
-
-### **Why This Works:**
-- It ensures that `st.session_state` stores all generated content persistently.
-- The character details, NPC, and quest persist even after interacting with buttons.
-- The UI updates only when `Generate Character` is clicked but doesn’t reset when other buttons are clicked.
-
-Try this out and let me know if you need further adjustments! 🚀
