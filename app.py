@@ -62,10 +62,14 @@ def generate_character_image(character):
         size="1024x1024"
     )
     return response["data"][0]["url"]
-
 # Function to generate NPC using AI
 def generate_npc():
-    prompt = "Generate a fantasy NPC with a name, role, and an interesting backstory."
+    prompt = (
+        "Generate a fantasy NPC with a name, role, and an interesting backstory. "
+        "Format your response as a JSON object with the following keys: "
+        '{"name": "NPC name", "role": "NPC role", "backstory": "NPC backstory"}'
+    )
+
     response = openai.ChatCompletion.create(
         model="gpt-4o-mini",
         messages=[
@@ -73,11 +77,21 @@ def generate_npc():
             {"role": "user", "content": prompt}
         ]
     )
-    return json.loads(response["choices"][0]["message"]["content"])
+
+    try:
+        return json.loads(response["choices"][0]["message"]["content"])
+    except json.JSONDecodeError:
+        st.error("Failed to generate a valid NPC. Please try again.")
+        return None
 
 # Function to generate quest using AI
 def generate_quest():
-    prompt = "Generate a fantasy quest with a title and an engaging description."
+    prompt = (
+        "Generate a fantasy quest with a title and an engaging description. "
+        "Format your response as a JSON object with the following keys: "
+        '{"title": "Quest title", "description": "Quest description"}'
+    )
+
     response = openai.ChatCompletion.create(
         model="gpt-4o-mini",
         messages=[
@@ -85,7 +99,12 @@ def generate_quest():
             {"role": "user", "content": prompt}
         ]
     )
-    return json.loads(response["choices"][0]["message"]["content"])
+
+    try:
+        return json.loads(response["choices"][0]["message"]["content"])
+    except json.JSONDecodeError:
+        st.error("Failed to generate a valid quest. Please try again.")
+        return None
 
 # Initialize session state
 if "character" not in st.session_state:
