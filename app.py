@@ -1,6 +1,5 @@
 import random
 import streamlit as st
-import json
 import openai
 import os
 import shutil
@@ -65,17 +64,39 @@ def generate_character_image(character):
     )
     return response["data"][0]["url"]
 
-# Function to generate NPC
+# Function to generate NPC (name, role, and backstory) using GPT-4
 def generate_npc():
-    npc_name = random.choice(["Aelric", "Talia", "Morthos", "Kaelen", "Elyssa", "Varian", "Lilith"])
-    npc_role = random.choice(["merchant", "guard", "wizard", "priest", "knight", "bard", "rogue", "hunter"])
-    npc_backstory = f"{npc_name} is a {npc_role} with a mysterious past, often seen in the tavern sharing tales of great adventures and hidden treasures."
+    prompt = "Create an NPC character for a D&D game. Provide the NPC's name, role (e.g., merchant, guard, wizard), and a short backstory that fits within a fantasy adventure setting."
+    response = openai.ChatCompletion.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You are a creative storyteller crafting NPCs for a fantasy adventure."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+    npc_info = response["choices"][0]["message"]["content"]
+    # Extracting NPC information
+    npc_lines = npc_info.split('\n')
+    npc_name = npc_lines[0].strip().split(':')[1].strip()
+    npc_role = npc_lines[1].strip().split(':')[1].strip()
+    npc_backstory = npc_lines[2].strip().split(':')[1].strip()
     return {"name": npc_name, "role": npc_role, "backstory": npc_backstory}
 
-# Function to generate quest
+# Function to generate a quest (title and description) using GPT-4
 def generate_quest():
-    quest_title = random.choice(["Rescue the Princess", "Retrieve the Lost Artifact", "Defeat the Dark Sorcerer", "Find the Hidden Treasure"])
-    quest_description = f"Your task is to embark on an epic adventure to {quest_title}. Along the way, you'll face challenges, make allies, and confront enemies."
+    prompt = "Create a quest for a D&D game. Provide a title for the quest and a detailed description of the quest's objective, challenges, and any important context or background."
+    response = openai.ChatCompletion.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You are a creative storyteller crafting quests for a fantasy adventure."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+    quest_info = response["choices"][0]["message"]["content"]
+    # Extracting quest information
+    quest_lines = quest_info.split('\n')
+    quest_title = quest_lines[0].strip().split(':')[1].strip()
+    quest_description = quest_lines[1].strip().split(':')[1].strip()
     return {"title": quest_title, "description": quest_description}
 
 # Function to generate PDF
@@ -106,22 +127,38 @@ def create_pdf(character, npc, quest):
     buffer.seek(0)
     return buffer
 
-# Function to create a ZIP file with PDF and image
+# Function to create a ZIP file with assets
 def create_zip(character, image_url):
+    # Create a temporary directory to store assets
+    temp_dir = "/tmp/assets"
+    os.makedirs(temp_dir, exist_ok=True)
+    
+    # Save character data to a file
+    with open(os.path.join(temp_dir, f"{character['Name']}_character.json"), "w") as f:
+        json.dump(character, f)
+    
+    # Download character image
+    img_response = requests.get(image_url)
+    with open(os.path.join(temp_dir, f"{character['Name']}_portrait.png"), "wb") as f:
+        f.write(img_response.content)
+
+    # Create PDF and save it
+    pdf = create_pdf(character, generate_npc(), generate_quest())
+    with open(os.path.join(temp_dir, f"{character['Name']}_character.pdf"), "wb") as f:
+        f.write(pdf.read())
+
+    # Create ZIP file
     zip_buffer = BytesIO()
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
-        # Save PDF
-        pdf = create_pdf(character, st.session_state.npc, st.session_state.quest)
-        zipf.writestr(f"{character['Name']}_character.pdf", pdf.read())
-        
-        # Download and save image
-        image_response = requests.get(image_url)
-        if image_response.status_code == 200:
-            zipf.writestr(f"{character['Name']}_portrait.jpg", image_response.content)
-        else:
-            st.error("Failed to download the character image.")
-    
+        for root, dirs, files in os.walk(temp_dir):
+            for file in files:
+                zipf.write(os.path.join(root, file), os.path.relpath(os.path.join(root, file), temp_dir))
+
     zip_buffer.seek(0)
+    
+    # Clean up temporary directory
+    shutil.rmtree(temp_dir)
+    
     return zip_buffer
 
 # Streamlit UI
@@ -130,10 +167,6 @@ st.title("Mana Forge Character Generator")
 # Session state initialization for persistence
 if "character" not in st.session_state:
     st.session_state.character = None
-if "npc" not in st.session_state:
-    st.session_state.npc = None
-if "quest" not in st.session_state:
-    st.session_state.quest = None
 
 # Character selection dropdown
 selected_race = st.selectbox("Select a race:", races)
@@ -142,51 +175,46 @@ selected_gender = st.selectbox("Select a gender:", genders)
 # Text input for character name
 name = st.text_input("Enter character name:", "")
 
-# Generate character button
-if st.button("Generate Character"):
-    if not name.strip():  # Ensure a name is provided
-        st.warning("Please enter a character name before generating.")
-    else:
-        st.session_state.character = generate_character(name, selected_gender, selected_race)
-        st.session_state.character["History"] = generate_character_history(st.session_state.character)  # Generate character backstory
-        st.session_state.character["Image"] = generate_character_image(st.session_state.character)  # Generate character image
-        
-        st.session_state.npc = generate_npc()  # Generate NPC
-        st.session_state.quest = generate_quest()  # Generate quest
-
-        st.success("Character Created Successfully!")
-        st.write(f"**Name:** {st.session_state.character['Name']}")
-        st.write(f"**Gender:** {st.session_state.character['Gender']}")
-        st.write(f"**Race:** {st.session_state.character['Race']}")
-        st.write(f"**Class:** {st.session_state.character['Class']}")
-        st.write(f"**Background:** {st.session_state.character['Background']}")
-
-        st.write("### Character History:")
-        st.write(st.session_state.character["History"])
-
-        st.write("### Character Portrait:")
-        st.image(st.session_state.character["Image"], caption="Generated Character Portrait")
-
-        # NPC and Quest Display
-        st.write("### NPC:")
-        st.write(f"**Name:** {st.session_state.npc['name']}")
-        st.write(f"**Role:** {st.session_state.npc['role']}")
-        st.write(f"**Backstory:** {st.session_state.npc['backstory']}")
-
-        st.write("### Quest:")
-        st.write(f"**Title:** {st.session_state.quest['title']}")
-        st.write(f"**Description:** {st.session_state.quest['description']}")
-
-        # Generate the ZIP file and offer it for download
-        if st.button("Download All Assets as PDF and ZIP"):
-            st.write("Generating PDF and ZIP...")
-            # Generate ZIP
-            zip_buffer = create_zip(st.session_state.character, st.session_state.character["Image"])
-            
-            # Provide the ZIP file for download
-            st.download_button(
-                label="Download All Assets (PDF & Image)",
-                data=zip_buffer,
-                file_name=f"{st.session_state.character['Name']}_assets.zip",
-                mime="application/zip"
-            )
+# Generate character automatically on input completion
+if name and st.button("Generate Character"):
+    st.session_state.character = generate_character(name, selected_gender, selected_race)
+    st.session_state.character["History"] = generate_character_history(st.session_state.character)
+    st.session_state.character["Image"] = generate_character_image(st.session_state.character)
+    
+    # Show character info
+    st.write(f"**Name:** {st.session_state.character['Name']}")
+    st.write(f"**Gender:** {st.session_state.character['Gender']}")
+    st.write(f"**Race:** {st.session_state.character['Race']}")
+    st.write(f"**Class:** {st.session_state.character['Class']}")
+    st.write(f"**Background:** {st.session_state.character['Background']}")
+    
+    st.write("### Character History:")
+    st.write(st.session_state.character["History"])
+    
+    st.write("### Character Portrait:")
+    st.image(st.session_state.character["Image"], caption="Generated Character Portrait")
+    
+    # Generate NPC and Quest
+    npc = generate_npc()
+    quest = generate_quest()
+    
+    # Show NPC and Quest Info
+    st.write("### NPC:")
+    st.write(f"**Name:** {npc['name']}")
+    st.write(f"**Role:** {npc['role']}")
+    st.write(f"**Backstory:** {npc['backstory']}")
+    
+    st.write("### Quest:")
+    st.write(f"**Title:** {quest['title']}")
+    st.write(f"**Description:** {quest['description']}")
+    
+    # Generate ZIP file automatically
+    zip_buffer = create_zip(st.session_state.character, st.session_state.character["Image"])
+    
+    # Provide download link
+    st.download_button(
+        label="Download All Assets as ZIP",
+        data=zip_buffer,
+        file_name=f"{st.session_state.character['Name']}_assets.zip",
+        mime="application/zip"
+    )
