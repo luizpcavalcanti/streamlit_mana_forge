@@ -1,3 +1,4 @@
+
 import random
 import streamlit as st
 import json
@@ -52,75 +53,62 @@ def generate_character_history(character):
         ]
     )
     return response["choices"][0]["message"]["content"]
+
 # Function to generate a full-body character image using OpenAI's DALL·E 3
 def generate_character_image(character):
     prompt = f"A full-body portrait of a {character['Gender']} {character['Race']} {character['Class']} wearing attire fitting their {character['Background']} background. The character should be standing, in a heroic pose, with detailed armor/clothing and weapons appropriate for their class."
-    
     response = openai.Image.create(
         model="dall-e-3",
         prompt=prompt,
         size="1024x1024"
     )
-    
-    # Ensure the response contains the expected structure
-    try:
-        return response["data"][0]["url"]
-    except (KeyError, IndexError):
-        st.error("Error: Failed to generate character image. Try again.")
-        return None
+    return response["data"][0]["url"]
 
-# Function to generate NPC using AI
-
+# Function to generate NPC
 def generate_npc():
-    prompt = (
-        "Generate a fantasy NPC with a name, role, and an interesting backstory. "
-        "Respond in JSON format with the following keys: "
-        '{"name": "NPC name", "role": "NPC role", "backstory": "NPC backstory"}'
-    )
+    npc_name = random.choice(["Aelric", "Talia", "Morthos", "Kaelen", "Elyssa", "Varian", "Lilith"])
+    npc_role = random.choice(["merchant", "guard", "wizard", "priest", "knight", "bard", "rogue", "hunter"])
+    npc_backstory = f"{npc_name} is a {npc_role} with a mysterious past, often seen in the tavern sharing tales of great adventures and hidden treasures."
+    return {"name": npc_name, "role": npc_role, "backstory": npc_backstory}
 
-    response = openai.ChatCompletion.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "You are a creative storyteller generating fantasy NPCs. Output must be valid JSON."},
-            {"role": "user", "content": prompt}
-        ],
-        response_format="json"
-    )
-
-    npc_data = response["choices"][0]["message"]["content"]
-
-    try:
-        return json.loads(npc_data)
-    except json.JSONDecodeError:
-        st.error("Error: OpenAI response is not valid JSON. Try again.")
-        return None
-
-# Function to generate quest using AI
+# Function to generate quest
 def generate_quest():
-    prompt = (
-        "Generate a fantasy quest with a title and an engaging description. "
-        "Respond in JSON format with the following keys: "
-        '{"title": "Quest title", "description": "Quest description"}'
-    )
+    quest_title = random.choice(["Rescue the Princess", "Retrieve the Lost Artifact", "Defeat the Dark Sorcerer", "Find the Hidden Treasure"])
+    quest_description = f"Your task is to embark on an epic adventure to {quest_title}. Along the way, you'll face challenges, make allies, and confront enemies."
+    return {"title": quest_title, "description": quest_description}
 
-    response = openai.ChatCompletion.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "You are a creative storyteller generating fantasy quests. Output must be valid JSON."},
-            {"role": "user", "content": prompt}
-        ],
-        response_format="json"
-    )
+# Function to generate PDF
+def create_pdf(character, npc, quest):
+    buffer = BytesIO()
+    c = canvas.Canvas(buffer, pagesize=letter)
+    
+    # Character info
+    c.drawString(100, 750, f"Character Name: {character['Name']}")
+    c.drawString(100, 730, f"Gender: {character['Gender']}")
+    c.drawString(100, 710, f"Race: {character['Race']}")
+    c.drawString(100, 690, f"Class: {character['Class']}")
+    c.drawString(100, 670, f"Background: {character['Background']}")
+    c.drawString(100, 650, f"History: {character['History']}")
+    
+    # NPC info
+    c.drawString(100, 620, f"NPC Name: {npc['name']}")
+    c.drawString(100, 600, f"NPC Role: {npc['role']}")
+    c.drawString(100, 580, f"NPC Backstory: {npc['backstory']}")
+    
+    # Quest info
+    c.drawString(100, 550, f"Quest Title: {quest['title']}")
+    c.drawString(100, 530, f"Quest Description: {quest['description']}")
+    
+    c.showPage()
+    c.save()
+    
+    buffer.seek(0)
+    return buffer
 
-    quest_data = response["choices"][0]["message"]["content"]
+# Streamlit UI
+st.title("Mana Forge Character Generator")
 
-    try:
-        return json.loads(quest_data)
-    except json.JSONDecodeError:
-        st.error("Error: OpenAI response is not valid JSON. Try again.")
-        return None
-
-# Initialize session state
+# Session state initialization for persistence
 if "character" not in st.session_state:
     st.session_state.character = None
 if "npc" not in st.session_state:
@@ -128,42 +116,62 @@ if "npc" not in st.session_state:
 if "quest" not in st.session_state:
     st.session_state.quest = None
 
-st.title("Mana Forge Character Generator")
-
 # Character selection dropdown
 selected_race = st.selectbox("Select a race:", races)
 selected_gender = st.selectbox("Select a gender:", genders)
+
+# Text input for character name
 name = st.text_input("Enter character name:", "")
 
+# Generate character button
 if st.button("Generate Character"):
-    if not name.strip():
+    if not name.strip():  # Ensure a name is provided
         st.warning("Please enter a character name before generating.")
     else:
         st.session_state.character = generate_character(name, selected_gender, selected_race)
-        st.session_state.character["History"] = generate_character_history(st.session_state.character)
-        st.session_state.character["Image"] = generate_character_image(st.session_state.character)
-        st.session_state.npc = generate_npc()
-        st.session_state.quest = generate_quest()
+        st.session_state.character["History"] = generate_character_history(st.session_state.character)  # Generate character backstory
+        st.session_state.character["Image"] = generate_character_image(st.session_state.character)  # Generate character image
+        
+        st.session_state.npc = generate_npc()  # Generate NPC
+        st.session_state.quest = generate_quest()  # Generate quest
+
         st.success("Character Created Successfully!")
+        st.write(f"**Name:** {st.session_state.character['Name']}")
+        st.write(f"**Gender:** {st.session_state.character['Gender']}")
+        st.write(f"**Race:** {st.session_state.character['Race']}")
+        st.write(f"**Class:** {st.session_state.character['Class']}")
+        st.write(f"**Background:** {st.session_state.character['Background']}")
+        
+        st.write("### Character History:")
+        st.write(st.session_state.character["History"])
+        
+        st.write("### Character Portrait:")
+        st.image(st.session_state.character["Image"], caption="Generated Character Portrait")
 
-if st.session_state.character:
-    st.write(f"**Name:** {st.session_state.character['Name']}")
-    st.write(f"**Gender:** {st.session_state.character['Gender']}")
-    st.write(f"**Race:** {st.session_state.character['Race']}")
-    st.write(f"**Class:** {st.session_state.character['Class']}")
-    st.write(f"**Background:** {st.session_state.character['Background']}")
-    st.write("### Character History:")
-    st.write(st.session_state.character["History"])
-    st.write("### Character Portrait:")
-    st.image(st.session_state.character["Image"], caption="Generated Character Portrait")
+        # NPC and Quest Display
+        st.write("### NPC:")
+        st.write(f"**Name:** {st.session_state.npc['name']}")
+        st.write(f"**Role:** {st.session_state.npc['role']}")
+        st.write(f"**Backstory:** {st.session_state.npc['backstory']}")
 
-if st.session_state.npc:
-    st.write("### NPC:")
-    st.write(f"**Name:** {st.session_state.npc['name']}")
-    st.write(f"**Role:** {st.session_state.npc['role']}")
-    st.write(f"**Backstory:** {st.session_state.npc['backstory']}")
+        st.write("### Quest:")
+        st.write(f"**Title:** {st.session_state.quest['title']}")
+        st.write(f"**Description:** {st.session_state.quest['description']}")
 
-if st.session_state.quest:
-    st.write("### Quest:")
-    st.write(f"**Title:** {st.session_state.quest['title']}")
-    st.write(f"**Description:** {st.session_state.quest['description']}")
+        # Optional buttons for generating more images and creating PDFs
+        if st.button("Generate 3D Art Assets (Turnarounds)"):
+            st.write("Generating 3D turnarounds...")
+            # Add logic for 3D turnarounds (this is a placeholder for now)
+        
+        if st.button("Download All Assets as PDF and ZIP"):
+            st.write("Generating PDF and ZIP...")
+            # Generate PDF
+            pdf = create_pdf(st.session_state.character, st.session_state.npc, st.session_state.quest)
+            
+            # Save PDF to disk or stream it as download
+            st.download_button(
+                label="Download PDF",
+                data=pdf,
+                file_name=f"{st.session_state.character['Name']}_character.pdf",
+                mime="application/pdf"
+            )
