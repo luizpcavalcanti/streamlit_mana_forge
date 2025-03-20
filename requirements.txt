@@ -3,7 +3,4 @@ openai==0.28
 diffusers
 torch
 transformers
-zipfile
 reportlab
-shutil
-io
