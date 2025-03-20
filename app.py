@@ -4,10 +4,11 @@ import json
 import openai
 import os
 import shutil
+import zipfile
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
-import zipfile
+import requests
 
 # Securely load the OpenAI API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
@@ -105,7 +106,7 @@ def create_pdf(character, npc, quest):
     buffer.seek(0)
     return buffer
 
-# Function to create a ZIP file
+# Function to create a ZIP file with PDF and image
 def create_zip(character, image_url):
     zip_buffer = BytesIO()
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
@@ -113,10 +114,13 @@ def create_zip(character, image_url):
         pdf = create_pdf(character, st.session_state.npc, st.session_state.quest)
         zipf.writestr(f"{character['Name']}_character.pdf", pdf.read())
         
-        # Save Image
-        image_response = openai.Image.retrieve(image_url)
-        zipf.writestr(f"{character['Name']}_portrait.jpg", image_response['data'][0]['url'])
-
+        # Download and save image
+        image_response = requests.get(image_url)
+        if image_response.status_code == 200:
+            zipf.writestr(f"{character['Name']}_portrait.jpg", image_response.content)
+        else:
+            st.error("Failed to download the character image.")
+    
     zip_buffer.seek(0)
     return zip_buffer
 
@@ -139,13 +143,14 @@ selected_gender = st.selectbox("Select a gender:", genders)
 name = st.text_input("Enter character name:", "")
 
 # Generate character button
-if st.button("Generate Character") and not st.session_state.character:
+if st.button("Generate Character"):
     if not name.strip():  # Ensure a name is provided
         st.warning("Please enter a character name before generating.")
     else:
         st.session_state.character = generate_character(name, selected_gender, selected_race)
         st.session_state.character["History"] = generate_character_history(st.session_state.character)  # Generate character backstory
         st.session_state.character["Image"] = generate_character_image(st.session_state.character)  # Generate character image
+        
         st.session_state.npc = generate_npc()  # Generate NPC
         st.session_state.quest = generate_quest()  # Generate quest
 
@@ -172,13 +177,16 @@ if st.button("Generate Character") and not st.session_state.character:
         st.write(f"**Title:** {st.session_state.quest['title']}")
         st.write(f"**Description:** {st.session_state.quest['description']}")
 
-# Button to download ZIP
-if st.button("Download All Assets as ZIP") and st.session_state.character:
-    zip_buffer = create_zip(st.session_state.character, st.session_state.character["Image"])
-    
-    st.download_button(
-        label="Download ZIP",
-        data=zip_buffer,
-        file_name=f"{st.session_state.character['Name']}_assets.zip",
-        mime="application/zip"
-    )
+        # Generate the ZIP file and offer it for download
+        if st.button("Download All Assets as PDF and ZIP"):
+            st.write("Generating PDF and ZIP...")
+            # Generate ZIP
+            zip_buffer = create_zip(st.session_state.character, st.session_state.character["Image"])
+            
+            # Provide the ZIP file for download
+            st.download_button(
+                label="Download All Assets (PDF & Image)",
+                data=zip_buffer,
+                file_name=f"{st.session_state.character['Name']}_assets.zip",
+                mime="application/zip"
+            )
