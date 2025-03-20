@@ -61,49 +61,57 @@ def generate_character_image(character):
         prompt=prompt,
         size="1024x1024"
     )
-    return response["data"][0]["url"]
+    return response["data"][0]["URL"]
+
 # Function to generate NPC using AI
+
 def generate_npc():
     prompt = (
         "Generate a fantasy NPC with a name, role, and an interesting backstory. "
-        "Format your response as a JSON object with the following keys: "
+        "Respond in JSON format with the following keys: "
         '{"name": "NPC name", "role": "NPC role", "backstory": "NPC backstory"}'
     )
 
     response = openai.ChatCompletion.create(
         model="gpt-4o-mini",
         messages=[
-            {"role": "system", "content": "You are a creative storyteller generating fantasy NPCs."},
+            {"role": "system", "content": "You are a creative storyteller generating fantasy NPCs. Output must be valid JSON."},
             {"role": "user", "content": prompt}
-        ]
+        ],
+        response_format="json"
     )
 
+    npc_data = response["choices"][0]["message"]["content"]
+
     try:
-        return json.loads(response["choices"][0]["message"]["content"])
+        return json.loads(npc_data)
     except json.JSONDecodeError:
-        st.error("Failed to generate a valid NPC. Please try again.")
+        st.error("Error: OpenAI response is not valid JSON. Try again.")
         return None
 
 # Function to generate quest using AI
 def generate_quest():
     prompt = (
         "Generate a fantasy quest with a title and an engaging description. "
-        "Format your response as a JSON object with the following keys: "
+        "Respond in JSON format with the following keys: "
         '{"title": "Quest title", "description": "Quest description"}'
     )
 
     response = openai.ChatCompletion.create(
         model="gpt-4o-mini",
         messages=[
-            {"role": "system", "content": "You are a creative storyteller generating fantasy quests."},
+            {"role": "system", "content": "You are a creative storyteller generating fantasy quests. Output must be valid JSON."},
             {"role": "user", "content": prompt}
-        ]
+        ],
+        response_format="json"
     )
 
+    quest_data = response["choices"][0]["message"]["content"]
+
     try:
-        return json.loads(response["choices"][0]["message"]["content"])
+        return json.loads(quest_data)
     except json.JSONDecodeError:
-        st.error("Failed to generate a valid quest. Please try again.")
+        st.error("Error: OpenAI response is not valid JSON. Try again.")
         return None
 
 # Initialize session state
