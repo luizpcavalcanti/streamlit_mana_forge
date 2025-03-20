@@ -58,6 +58,30 @@ def generate_character_image(character):
     )
     return response["data"][0]["url"]
 
+# Function to generate a quest tied to the character's background
+def generate_quest(character):
+    prompt = f"Create a quest for a {character['Race']} {character['Class']} with a {character['Background']} background. The quest should be personalized, based on their background, and should lead to an intriguing plot."
+    response = openai.ChatCompletion.create(
+        model="gpt-4o-mini",
+        messages=[ 
+            {"role": "system", "content": "You are a creative quest designer crafting personalized quests."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+    return response["choices"][0]["message"]["content"]
+
+# Function to generate an NPC related to the character's background
+def generate_npc(character):
+    prompt = f"Create an NPC related to a {character['Race']} {character['Class']} with a {character['Background']} background. The NPC should have a significant role in the character's story."
+    response = openai.ChatCompletion.create(
+        model="gpt-4o-mini",
+        messages=[ 
+            {"role": "system", "content": "You are a creative storyteller crafting NPCs related to a character's background."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+    return response["choices"][0]["message"]["content"]
+
 # Streamlit UI
 st.title("Mana Forge Character Generator")
 
@@ -89,3 +113,14 @@ if st.button("Generate Character"):
 
         st.write("### Character Portrait:")
         st.image(character["Image"], caption="Generated Character Portrait")
+
+        # Ask if user wants to generate NPC and Quest
+        if st.button("Generate NPC & Quest"):
+            character["Quest"] = generate_quest(character)
+            character["NPC"] = generate_npc(character)
+            
+            st.write("### Character Quest:")
+            st.write(character["Quest"])
+
+            st.write("### Related NPC:")
+            st.write(character["NPC"])
