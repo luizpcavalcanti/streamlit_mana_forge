@@ -101,6 +101,10 @@ selected_gender = st.selectbox("Select a gender:", genders)
 # Text input for character name
 name = st.text_input("Enter character name:", "")
 
+# Check if character data exists in session state
+if "character" not in st.session_state:
+    st.session_state.character = None
+
 # Generate character button
 if st.button("Generate Character"):
     if not name.strip():  # Ensure a name is provided
@@ -109,7 +113,9 @@ if st.button("Generate Character"):
         character = generate_character(name, selected_gender, selected_race)
         character["History"] = generate_character_history(character)  # Generate character backstory
         character["Image"] = generate_character_image(character)  # Generate character image
-
+        
+        st.session_state.character = character  # Save character data in session state
+        
         st.success("Character Created Successfully!")
         st.write(f"**Name:** {character['Name']}")
         st.write(f"**Gender:** {character['Gender']}")
@@ -123,56 +129,70 @@ if st.button("Generate Character"):
         st.write("### Character Portrait:")
         st.image(character["Image"], caption="Generated Character Portrait")
 
-        # Generate NPC and Quest
-        if st.button("Generate NPC"):
-            npc = generate_npc()
-            st.write("### NPC Description:")
-            st.write(npc)
+# Display previously generated character data if available
+if st.session_state.character:
+    character = st.session_state.character
+    st.write("### Previously Generated Character:")
+    st.write(f"**Name:** {character['Name']}")
+    st.write(f"**Gender:** {character['Gender']}")
+    st.write(f"**Race:** {character['Race']}")
+    st.write(f"**Class:** {character['Class']}")
+    st.write(f"**Background:** {character['Background']}")
+    st.write("### Character History:")
+    st.write(character["History"])
+    st.write("### Character Portrait:")
+    st.image(character["Image"], caption="Generated Character Portrait")
 
-        if st.button("Generate Quest"):
-            quest = generate_quest()
-            st.write("### Quest Description:")
-            st.write(quest)
+    # Generate NPC and Quest
+    if st.button("Generate NPC"):
+        npc = generate_npc()
+        st.write("### NPC Description:")
+        st.write(npc)
 
-        # Generate additional art assets
-        if st.button("Generate 3D Art Assets"):
-            # Generate 2 turn-around pictures (for 3D modeling or 360 preview)
-            st.write("Generating 2 turn-around images for 3D modeling...")
-            # Note: Here, you can add specific logic for generating turn-around images using DALL·E, for example.
-            # Currently, it's placeholder logic.
-            st.image(character["Image"], caption="Turnaround View 1")
-            st.image(character["Image"], caption="Turnaround View 2")
+    if st.button("Generate Quest"):
+        quest = generate_quest()
+        st.write("### Quest Description:")
+        st.write(quest)
 
-        # Generate a ZIP file with all generated assets
-        if st.button("Download ZIP"):
-            # Prepare content
-            output_dir = f"/tmp/{character['Name']}_assets"
-            os.makedirs(output_dir, exist_ok=True)
+    # Generate additional art assets
+    if st.button("Generate 3D Art Assets"):
+        # Generate 2 turn-around pictures (for 3D modeling or 360 preview)
+        st.write("Generating 2 turn-around images for 3D modeling...")
+        # Note: Here, you can add specific logic for generating turn-around images using DALL·E, for example.
+        # Currently, it's placeholder logic.
+        st.image(character["Image"], caption="Turnaround View 1")
+        st.image(character["Image"], caption="Turnaround View 2")
 
-            # Save character data in a PDF
-            pdf_path = os.path.join(output_dir, f"{character['Name']}_character.pdf")
-            c = canvas.Canvas(pdf_path, pagesize=letter)
-            c.drawString(100, 750, f"Character: {character['Name']}")
-            c.drawString(100, 730, f"Gender: {character['Gender']}")
-            c.drawString(100, 710, f"Race: {character['Race']}")
-            c.drawString(100, 690, f"Class: {character['Class']}")
-            c.drawString(100, 670, f"Background: {character['Background']}")
-            c.drawString(100, 650, f"History: {character['History']}")
-            c.drawImage(character["Image"], 100, 500, width=200, height=200)
-            c.save()
+    # Generate a ZIP file with all generated assets
+    if st.button("Download ZIP"):
+        # Prepare content
+        output_dir = f"/tmp/{character['Name']}_assets"
+        os.makedirs(output_dir, exist_ok=True)
 
-            # Add the character images and data to the ZIP file
-            zip_file_path = f"/tmp/{character['Name']}_assets.zip"
-            with zipfile.ZipFile(zip_file_path, 'w') as zipf:
-                zipf.write(pdf_path, os.path.basename(pdf_path))  # Add PDF to ZIP
-                # Optionally add the character images (both portrait and 3D art assets)
-                zipf.write(character["Image"], f"{character['Name']}_portrait.png")  # Add portrait image
+        # Save character data in a PDF
+        pdf_path = os.path.join(output_dir, f"{character['Name']}_character.pdf")
+        c = canvas.Canvas(pdf_path, pagesize=letter)
+        c.drawString(100, 750, f"Character: {character['Name']}")
+        c.drawString(100, 730, f"Gender: {character['Gender']}")
+        c.drawString(100, 710, f"Race: {character['Race']}")
+        c.drawString(100, 690, f"Class: {character['Class']}")
+        c.drawString(100, 670, f"Background: {character['Background']}")
+        c.drawString(100, 650, f"History: {character['History']}")
+        c.drawImage(character["Image"], 100, 500, width=200, height=200)
+        c.save()
 
-            # Provide a download link for the ZIP file
-            with open(zip_file_path, "rb") as f:
-                st.download_button(
-                    label="Download All Character Assets",
-                    data=f,
-                    file_name=f"{character['Name']}_assets.zip",
-                    mime="application/zip"
-                )
+        # Add the character images and data to the ZIP file
+        zip_file_path = f"/tmp/{character['Name']}_assets.zip"
+        with zipfile.ZipFile(zip_file_path, 'w') as zipf:
+            zipf.write(pdf_path, os.path.basename(pdf_path))  # Add PDF to ZIP
+            # Optionally add the character images (both portrait and 3D art assets)
+            zipf.write(character["Image"], f"{character['Name']}_portrait.png")  # Add portrait image
+
+        # Provide a download link for the ZIP file
+        with open(zip_file_path, "rb") as f:
+            st.download_button(
+                label="Download All Character Assets",
+                data=f,
+                file_name=f"{character['Name']}_assets.zip",
+                mime="application/zip"
+            )
