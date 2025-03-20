@@ -2,6 +2,7 @@ import random
 import streamlit as st
 import json
 import openai
+import torch
 from diffusers import DiffusionPipeline
 
 # Securely load the OpenAI API key
@@ -28,7 +29,7 @@ backgrounds = [
 genders = ["Male", "Female", "Non-binary"]
 
 # Load the image generation model
-pipe = DiffusionPipeline.from_pretrained("black-forest-labs/FLUX.1-schnell")
+pipe = DiffusionPipeline.from_pretrained("black-forest-labs/FLUX.1-schnell").to("cpu")
 
 def generate_character(name, gender, race):
     return {
