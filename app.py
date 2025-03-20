@@ -57,7 +57,7 @@ def generate_character_image(character):
     prompt = f"A full-body portrait of a {character['Gender']} {character['Race']} {character['Class']} wearing attire fitting their {character['Background']} background. The character should be standing, in a heroic pose, with detailed armor/clothing and weapons appropriate for their class."
     
     response = openai.Image.create(
-        model="dall-e-3",
+        model="dall-e-2",
         prompt=prompt,
         size="1024x1024"
     )
