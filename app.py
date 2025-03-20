@@ -52,16 +52,22 @@ def generate_character_history(character):
         ]
     )
     return response["choices"][0]["message"]["content"]
-
 # Function to generate a full-body character image using OpenAI's DALL·E 3
 def generate_character_image(character):
     prompt = f"A full-body portrait of a {character['Gender']} {character['Race']} {character['Class']} wearing attire fitting their {character['Background']} background. The character should be standing, in a heroic pose, with detailed armor/clothing and weapons appropriate for their class."
+    
     response = openai.Image.create(
         model="dall-e-3",
         prompt=prompt,
         size="1024x1024"
     )
-    return response["data"][0]["URL"]
+    
+    # Ensure the response contains the expected structure
+    try:
+        return response["data"][0]["url"]
+    except (KeyError, IndexError):
+        st.error("Error: Failed to generate character image. Try again.")
+        return None
 
 # Function to generate NPC using AI
 
