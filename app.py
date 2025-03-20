@@ -89,22 +89,31 @@ def generate_npc():
 
     return {"name": npc_name, "role": npc_role, "backstory": npc_backstory}
 
-# Function to generate a quest (title and description) using GPT-4
+ Function to generate a quest using GPT-4
 def generate_quest():
-    prompt = "Create a quest for a D&D game. Provide a title for the quest and a detailed description of the quest's objective, challenges, and any important context or background."
+    prompt = "Create a quest for a fantasy adventure game. Provide the quest title, description, and objectives."
     response = openai.ChatCompletion.create(
         model="gpt-4o-mini",
         messages=[
-            {"role": "system", "content": "You are a creative storyteller crafting quests for a fantasy adventure."},
+            {"role": "system", "content": "You are a quest designer for a fantasy RPG game."},
             {"role": "user", "content": prompt}
         ]
     )
     quest_info = response["choices"][0]["message"]["content"]
-    # Extracting quest information
+    # Split the quest info based on new lines
     quest_lines = quest_info.split('\n')
-    quest_title = quest_lines[0].strip().split(':')[1].strip()
-    quest_description = quest_lines[1].strip().split(':')[1].strip()
-    return {"title": quest_title, "description": quest_description}
+
+    # Try extracting the quest details based on the format
+    try:
+        quest_title = quest_lines[0].strip()  # First line should contain the quest title
+        quest_description = quest_lines[1].strip()  # Second line should contain the quest description
+        quest_objectives = quest_lines[2].strip()  # Third line should contain the quest objectives
+    except IndexError:
+        quest_title = "Unknown Quest"
+        quest_description = "No description available."
+        quest_objectives = "No objectives specified."
+
+    return {"title": quest_title, "description": quest_description, "objectives": quest_objectives}
 
 # Function to generate PDF
 def create_pdf(character, npc, quest):
