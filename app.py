@@ -7,6 +7,7 @@ import shutil
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
+import zipfile
 
 # Securely load the OpenAI API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
@@ -104,6 +105,20 @@ def create_pdf(character, npc, quest):
     buffer.seek(0)
     return buffer
 
+# Function to create a ZIP file for downloading
+def create_zip(character, npc, quest, pdf_data):
+    zip_buffer = BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+        # Add PDF to ZIP
+        zip_file.writestr(f"{character['Name']}_character.pdf", pdf_data.read())
+        
+        # Add character image to ZIP (For the sake of demonstration, we'll use a placeholder)
+        # You can replace the image URL logic with actual image downloads.
+        zip_file.writestr(f"{character['Name']}_character_image.txt", f"Image URL: {character['Image']}")
+    
+    zip_buffer.seek(0)
+    return zip_buffer
+
 # Streamlit UI
 st.title("Mana Forge Character Generator")
 
@@ -122,55 +137,48 @@ selected_gender = st.selectbox("Select a gender:", genders)
 # Text input for character name
 name = st.text_input("Enter character name:", "")
 
-# Generate character button
-if st.button("Generate Character"):
-    if not name.strip():  # Ensure a name is provided
-        st.warning("Please enter a character name before generating.")
-    else:
-        st.session_state.character = generate_character(name, selected_gender, selected_race)
-        st.session_state.character["History"] = generate_character_history(st.session_state.character)  # Generate character backstory
-        st.session_state.character["Image"] = generate_character_image(st.session_state.character)  # Generate character image
-        
-        st.session_state.npc = generate_npc()  # Generate NPC
-        st.session_state.quest = generate_quest()  # Generate quest
+# Generate character automatically
+if name.strip():
+    st.session_state.character = generate_character(name, selected_gender, selected_race)
+    st.session_state.character["History"] = generate_character_history(st.session_state.character)  # Generate character backstory
+    st.session_state.character["Image"] = generate_character_image(st.session_state.character)  # Generate character image
+    
+    st.session_state.npc = generate_npc()  # Generate NPC
+    st.session_state.quest = generate_quest()  # Generate quest
 
-        st.success("Character Created Successfully!")
-        st.write(f"**Name:** {st.session_state.character['Name']}")
-        st.write(f"**Gender:** {st.session_state.character['Gender']}")
-        st.write(f"**Race:** {st.session_state.character['Race']}")
-        st.write(f"**Class:** {st.session_state.character['Class']}")
-        st.write(f"**Background:** {st.session_state.character['Background']}")
-        
-        st.write("### Character History:")
-        st.write(st.session_state.character["History"])
-        
-        st.write("### Character Portrait:")
-        st.image(st.session_state.character["Image"], caption="Generated Character Portrait")
+    st.success("Character Created Successfully!")
+    st.write(f"**Name:** {st.session_state.character['Name']}")
+    st.write(f"**Gender:** {st.session_state.character['Gender']}")
+    st.write(f"**Race:** {st.session_state.character['Race']}")
+    st.write(f"**Class:** {st.session_state.character['Class']}")
+    st.write(f"**Background:** {st.session_state.character['Background']}")
 
-        # NPC and Quest Display
-        st.write("### NPC:")
-        st.write(f"**Name:** {st.session_state.npc['name']}")
-        st.write(f"**Role:** {st.session_state.npc['role']}")
-        st.write(f"**Backstory:** {st.session_state.npc['backstory']}")
+    st.write("### Character History:")
+    st.write(st.session_state.character["History"])
+    
+    st.write("### Character Portrait:")
+    st.image(st.session_state.character["Image"], caption="Generated Character Portrait")
 
-        st.write("### Quest:")
-        st.write(f"**Title:** {st.session_state.quest['title']}")
-        st.write(f"**Description:** {st.session_state.quest['description']}")
+    # NPC and Quest Display
+    st.write("### NPC:")
+    st.write(f"**Name:** {st.session_state.npc['name']}")
+    st.write(f"**Role:** {st.session_state.npc['role']}")
+    st.write(f"**Backstory:** {st.session_state.npc['backstory']}")
 
-        # Optional buttons for generating more images and creating PDFs
-        if st.button("Generate 3D Art Assets (Turnarounds)"):
-            st.write("Generating 3D turnarounds...")
-            # Add logic for 3D turnarounds (this is a placeholder for now)
-        
-        if st.button("Download All Assets as PDF and ZIP"):
-            st.write("Generating PDF and ZIP...")
-            # Generate PDF
-            pdf = create_pdf(st.session_state.character, st.session_state.npc, st.session_state.quest)
-            
-            # Save PDF to disk or stream it as download
-            st.download_button(
-                label="Download PDF",
-                data=pdf,
-                file_name=f"{st.session_state.character['Name']}_character.pdf",
-                mime="application/pdf"
-            )
+    st.write("### Quest:")
+    st.write(f"**Title:** {st.session_state.quest['title']}")
+    st.write(f"**Description:** {st.session_state.quest['description']}")
+
+    # Generate PDF
+    pdf = create_pdf(st.session_state.character, st.session_state.npc, st.session_state.quest)
+    
+    # Create ZIP file
+    zip_file = create_zip(st.session_state.character, st.session_state.npc, st.session_state.quest, pdf)
+
+    # Automatically download PDF and ZIP
+    st.download_button(
+        label="Download All Assets (PDF & ZIP)",
+        data=zip_file,
+        file_name=f"{st.session_state.character['Name']}_assets.zip",
+        mime="application/zip"
+    )
