@@ -63,6 +63,34 @@ def generate_character_image(character):
     )
     return response["data"][0]["url"]
 
+# Function to generate an NPC using GPT-4
+def generate_npc():
+    npc_types = ["Merchant", "Guard", "Villager", "Wizard", "Blacksmith", "Farmer", "Thief", "Priest", "Healer"]
+    npc_type = random.choice(npc_types)
+    prompt = f"Create a detailed description of an NPC who is a {npc_type}. Include their appearance, personality, and background."
+    response = openai.ChatCompletion.create(
+        model="gpt-4o-mini",
+        messages=[ 
+            {"role": "system", "content": "You are a world-building assistant creating detailed NPCs."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+    return response["choices"][0]["message"]["content"]
+
+# Function to generate a quest using GPT-4
+def generate_quest():
+    quest_types = ["Rescue", "Fetch", "Explore", "Defend", "Investigate", "Escort", "Destroy"]
+    quest_type = random.choice(quest_types)
+    prompt = f"Create a detailed quest where the player must {quest_type}. Include a backstory, objectives, rewards, and any challenges the player might face."
+    response = openai.ChatCompletion.create(
+        model="gpt-4o-mini",
+        messages=[ 
+            {"role": "system", "content": "You are a quest creator for a fantasy game."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+    return response["choices"][0]["message"]["content"]
+
 # Streamlit UI
 st.title("Mana Forge Character Generator")
 
@@ -94,6 +122,17 @@ if st.button("Generate Character"):
 
         st.write("### Character Portrait:")
         st.image(character["Image"], caption="Generated Character Portrait")
+
+        # Generate NPC and Quest
+        if st.button("Generate NPC"):
+            npc = generate_npc()
+            st.write("### NPC Description:")
+            st.write(npc)
+
+        if st.button("Generate Quest"):
+            quest = generate_quest()
+            st.write("### Quest Description:")
+            st.write(quest)
 
         # Generate additional art assets
         if st.button("Generate 3D Art Assets"):
