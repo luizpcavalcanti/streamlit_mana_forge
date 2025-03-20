@@ -8,6 +8,7 @@ from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 import requests
+import json
 
 # Securely load the OpenAI API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
@@ -63,6 +64,7 @@ def generate_character_image(character):
         size="1024x1024"
     )
     return response["data"][0]["url"]
+
 # Function to generate NPC (name, role, and backstory) using GPT-4
 def generate_npc():
     prompt = "Create an NPC character for a D&D game. Provide the NPC's name, role (e.g., merchant, guard, wizard), and a short backstory that fits within a fantasy adventure setting."
@@ -89,7 +91,7 @@ def generate_npc():
 
     return {"name": npc_name, "role": npc_role, "backstory": npc_backstory}
 
- Function to generate a quest using GPT-4
+# Function to generate a quest using GPT-4
 def generate_quest():
     prompt = "Create a quest for a fantasy adventure game. Provide the quest title, description, and objectives."
     response = openai.ChatCompletion.create(
@@ -198,39 +200,8 @@ if name and st.button("Generate Character"):
     st.session_state.character["Image"] = generate_character_image(st.session_state.character)
     
     # Show character info
-    st.write(f"**Name:** {st.session_state.character['Name']}")
-    st.write(f"**Gender:** {st.session_state.character['Gender']}")
-    st.write(f"**Race:** {st.session_state.character['Race']}")
-    st.write(f"**Class:** {st.session_state.character['Class']}")
-    st.write(f"**Background:** {st.session_state.character['Background']}")
+    st.write(st.session_state.character)
     
-    st.write("### Character History:")
-    st.write(st.session_state.character["History"])
-    
-    st.write("### Character Portrait:")
-    st.image(st.session_state.character["Image"], caption="Generated Character Portrait")
-    
-    # Generate NPC and Quest
-    npc = generate_npc()
-    quest = generate_quest()
-    
-    # Show NPC and Quest Info
-    st.write("### NPC:")
-    st.write(f"**Name:** {npc['name']}")
-    st.write(f"**Role:** {npc['role']}")
-    st.write(f"**Backstory:** {npc['backstory']}")
-    
-    st.write("### Quest:")
-    st.write(f"**Title:** {quest['title']}")
-    st.write(f"**Description:** {quest['description']}")
-    
-    # Generate ZIP file automatically
+    # Downloadable ZIP with assets
     zip_buffer = create_zip(st.session_state.character, st.session_state.character["Image"])
-    
-    # Provide download link
-    st.download_button(
-        label="Download All Assets as ZIP",
-        data=zip_buffer,
-        file_name=f"{st.session_state.character['Name']}_assets.zip",
-        mime="application/zip"
-    )
+    st.download_button("Download Character Assets", zip_buffer, file_name=f"{name}_assets.zip", mime="application/zip")
