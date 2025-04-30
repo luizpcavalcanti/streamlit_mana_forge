@@ -3,7 +3,6 @@ import streamlit as st
 import json
 import openai
 import os
-import shutil
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
@@ -63,7 +62,7 @@ def generate_quest():
     parts = response["choices"][0]["message"]["content"].strip().split("\n", 1)
     return {"title": parts[0], "description": parts[1] if len(parts) > 1 else "A mysterious quest awaits."}
 
-# Music generation using Audiocraft/MusicGen (placeholder function)
+# Music generation using Audiocraft/MusicGen
 def generate_theme_song(prompt_text, save_path="theme_song.wav"):
     try:
         from audiocraft.models import MusicGen
@@ -91,7 +90,7 @@ def create_pdf(character, npc, quest):
     write_line(f"NPC Backstory: {npc['backstory'][:100]}...")
     write_line(f"Quest: {quest['title']}")
     write_line(f"Quest Desc: {quest['description'][:150]}...")
-    
+
     c.showPage()
     c.save()
     buffer.seek(0)
@@ -143,8 +142,8 @@ if st.button("Generate Character"):
             prompt = f"Fantasy orchestral theme for a {char['Race']} {char['Class']} named {char['Name']} from a {char['Background']} background."
             song_path = generate_theme_song(prompt)
             if song_path and os.path.exists(song_path):
-                audio_file = open(song_path, "rb")
-                st.audio(audio_file.read(), format="audio/wav")
+                with open(song_path, "rb") as audio_file:
+                    st.audio(audio_file.read(), format="audio/wav")
             else:
                 st.warning("Failed to generate theme song. Check Audiocraft installation.")
 
