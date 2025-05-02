@@ -1,5 +1,7 @@
 Mana Forge Character Generator
-Overview
+
+-
+
 Mana Forge Character Generator is a creative tool built with Streamlit that assists game designers, developers, and writers in generating rich character profiles. It leverages AI models such as OpenAI's GPT-4, DALL·E 3, and Audiocraft's MusicGen to create text, images, and music for game characters. Outputs can be exported as PDF or JSON files.
 
 ✨ Features
