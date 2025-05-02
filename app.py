@@ -18,13 +18,15 @@ backgrounds = ["Acolyte", "Folk Hero", "Sage", "Criminal", "Noble", "Hermit", "O
 genders = ["Male", "Female", "Non-binary"]
 
 # Character generation
-def generate_character(name, gender, race):
+def generate_character(name, gender, race, auto_generate_class_and_background):
+    character_class = random.choice(classes) if auto_generate_class_and_background else st.selectbox("Select class:", classes)
+    background = random.choice(backgrounds) if auto_generate_class_and_background else st.selectbox("Select background:", backgrounds)
     return {
         "Name": name,
         "Gender": gender,
         "Race": race,
-        "Class": random.choice(classes),
-        "Background": random.choice(backgrounds)
+        "Class": character_class,
+        "Background": background
     }
 
 # GPT-based history (optional)
@@ -127,6 +129,9 @@ st.title("🎭 Mana Forge Character Generator")
 name = st.text_input("Enter character name:")
 selected_race = st.selectbox("Select race:", races)
 selected_gender = st.selectbox("Select gender:", genders)
+
+# Checkbox options
+auto_generate_class_and_background = st.checkbox("Automatically generate class and background (or select manually)?", value=True)
 generate_music = st.checkbox("Generate Theme Song (Audiocraft)")
 generate_turnaround = st.checkbox("Generate 360° Turnaround")
 generate_location = st.checkbox("Generate Place of Origin")
@@ -139,7 +144,7 @@ if st.button("Generate Character"):
     if not name.strip():
         st.warning("Please enter a name.")
     else:
-        st.session_state.character = generate_character(name, selected_gender, selected_race)
+        st.session_state.character = generate_character(name, selected_gender, selected_race, auto_generate_class_and_background)
         st.session_state.character["History"] = generate_character_history(st.session_state.character, generate_history)
         st.session_state.character["Image"] = generate_character_image(st.session_state.character)
         st.session_state.npc = generate_npc(generate_npc_text)
