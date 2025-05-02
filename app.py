@@ -7,6 +7,8 @@ from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 import base64
+import zipfile
+import tempfile
 
 # Load OpenAI key securely
 openai.api_key = st.secrets["OPENAI_API_KEY"]
@@ -32,10 +34,7 @@ def generate_character_history(character):
     prompt = f"Create a short backstory for a {character['Race']} {character['Class']} named {character['Name']}. They come from a {character['Background']} background. Include motivations, key events, and a mystery."
     response = openai.ChatCompletion.create(
         model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "You are a creative storyteller."},
-            {"role": "user", "content": prompt}
-        ]
+        messages=[{"role": "system", "content": "You are a creative storyteller."}, {"role": "user", "content": prompt}]
     )
     return response["choices"][0]["message"]["content"]
 
@@ -71,8 +70,8 @@ def generate_theme_song(prompt_text, save_path="theme_song.wav"):
         model = MusicGen.get_pretrained('melody')
         model.set_generation_params(duration=10)
         wav = model.generate([prompt_text])
-        audio_write("output/theme_song", wav[0].cpu(), model.sample_rate, strategy="loudness", format="wav")
-        return "output/theme_song.wav"
+        audio_write(save_path, wav[0].cpu(), model.sample_rate, strategy="loudness", format="wav")
+        return save_path
     except Exception as e:
         return None
 
@@ -95,6 +94,25 @@ def create_pdf(character, npc, quest):
     c.save()
     buffer.seek(0)
     return buffer
+
+# Function to create zip file and trigger download
+def create_zip_file(character, npc, quest, pdf_file):
+    zip_buffer = BytesIO()
+    with zipfile.ZipFile(zip_buffer, mode='w', compression=zipfile.ZIP_DEFLATED) as archive:
+        # Add PDF
+        archive.writestr(f"{character['Name']}_profile.pdf", pdf_file.read())
+        # Add any other assets like images, music, etc.
+        if 'Image' in character:
+            archive.writestr(f"{character['Name']}_image.jpg", BytesIO(requests.get(character['Image']).content))
+        if 'Theme Song' in quest:
+            with open(quest['Theme Song'], 'rb') as song_file:
+                archive.writestr(f"{character['Name']}_theme_song.wav", song_file.read())
+    zip_buffer.seek(0)
+    
+    # Trigger download
+    b64 = base64.b64encode(zip_buffer.read()).decode()
+    href = f'<a href="data:application/zip;base64,{b64}" download="{character["Name"]}_game_assets.zip">Your assets are ready for download.</a>'
+    st.markdown(href, unsafe_allow_html=True)
 
 # Streamlit UI
 st.title("🎭 Mana Forge Character Generator")
@@ -146,7 +164,8 @@ if st.button("Generate Character"):
                     st.audio(audio_file.read(), format="audio/wav")
             else:
                 st.warning("Failed to generate theme song. Check Audiocraft installation.")
-
-        if st.button("📄 Download PDF"):
-            pdf = create_pdf(st.session_state.character, st.session_state.npc, st.session_state.quest)
-            st.download_button("Download PDF", pdf, file_name=f"{char['Name']}_profile.pdf", mime="application/pdf")
+        
+        # Create PDF
+        pdf = create_pdf(st.session_state.character, st.session_state.npc, st.session_state.quest)
+        # Trigger zip creation and download
+        create_zip_file(st.session_state.character, st.session_state.npc, st.session_state.quest, pdf)
