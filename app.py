@@ -27,10 +27,9 @@ def generate_character(name, gender, race):
         "Background": random.choice(backgrounds)
     }
 
-# GPT-based history (optional)
-def generate_character_history(character, prompt=None):
-    if not prompt:
-        return ""
+# GPT-based history
+def generate_character_history(character):
+    prompt = f"Create a short backstory for a {character['Race']} {character['Class']} named {character['Name']}. They come from a {character['Background']} background. Include motivations, key events, and a mystery."
     response = openai.ChatCompletion.create(
         model="gpt-4o-mini",
         messages=[
@@ -40,26 +39,30 @@ def generate_character_history(character, prompt=None):
     )
     return response["choices"][0]["message"]["content"]
 
-# DALL·E 3 character image (optional)
-def generate_character_image(prompt):
+# DALL·E 3 character image
+def generate_character_image(character):
+    prompt = f"A full-body portrait of a {character['Gender']} {character['Race']} {character['Class']} with {character['Background']} vibes, heroic pose, detailed fantasy outfit."
     response = openai.Image.create(model="dall-e-3", prompt=prompt, size="1024x1024")
     return response["data"][0]["url"]
 
-# NPC generation (optional)
-def generate_npc(prompt):
-    if not prompt:
-        return {}
+# NPC generation
+def generate_npc():
+    prompt = "Generate a unique fantasy NPC name and their profession."
     response = openai.ChatCompletion.create(model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
-    return {"text": response["choices"][0]["message"]["content"].strip()}
+    npc_text = response["choices"][0]["message"]["content"].strip().split(", ")
+    name = npc_text[0]
+    role = npc_text[1] if len(npc_text) == 2 else random.choice(["merchant", "guard", "wizard", "priest"])
+    backstory = f"{name} is a {role} with a mysterious past."
+    return {"name": name, "role": role, "backstory": backstory}
 
-# Quest generation (optional)
-def generate_quest(prompt):
-    if not prompt:
-        return {}
+# Quest generation
+def generate_quest():
+    prompt = "Create a fantasy quest with a title and short description."
     response = openai.ChatCompletion.create(model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
-    return {"text": response["choices"][0]["message"]["content"].strip()}
+    parts = response["choices"][0]["message"]["content"].strip().split("\n", 1)
+    return {"title": parts[0], "description": parts[1] if len(parts) > 1 else "A mysterious quest awaits."}
 
-# Music generation using Audiocraft/MusicGen (optional)
+# Music generation using Audiocraft/MusicGen
 def generate_theme_song(prompt_text, save_path="theme_song.wav"):
     try:
         from audiocraft.models import MusicGen
@@ -68,8 +71,8 @@ def generate_theme_song(prompt_text, save_path="theme_song.wav"):
         model = MusicGen.get_pretrained('melody')
         model.set_generation_params(duration=10)
         wav = model.generate([prompt_text])
-        audio_write(save_path.replace(".wav", ""), wav[0].cpu(), model.sample_rate, strategy="loudness", format="wav")
-        return save_path
+        audio_write("output/theme_song", wav[0].cpu(), model.sample_rate, strategy="loudness", format="wav")
+        return "output/theme_song.wav"
     except Exception as e:
         return None
 
@@ -82,12 +85,11 @@ def create_pdf(character, npc, quest):
 
     write_line(f"Character: {character['Name']} ({character['Gender']}, {character['Race']}, {character['Class']})")
     write_line(f"Background: {character['Background']}")
-    if "History" in character and character["History"]:
-        write_line(f"History: {character['History'][:200]}...")
-    if npc:
-        write_line(f"NPC: {npc.get('text', '')[:100]}...")
-    if quest:
-        write_line(f"Quest: {quest.get('text', '')[:150]}...")
+    write_line(f"History: {character['History'][:200]}...")
+    write_line(f"NPC: {npc['name']} - {npc['role']}")
+    write_line(f"NPC Backstory: {npc['backstory'][:100]}...")
+    write_line(f"Quest: {quest['title']}")
+    write_line(f"Quest Desc: {quest['description'][:150]}...")
 
     c.showPage()
     c.save()
@@ -100,74 +102,48 @@ st.title("🎭 Mana Forge Character Generator")
 name = st.text_input("Enter character name:")
 selected_race = st.selectbox("Select race:", races)
 selected_gender = st.selectbox("Select gender:", genders)
-
-# Optional toggles
-generate_history = st.checkbox("🧠 Generate Character Backstory")
-history_prompt = st.text_area("Backstory Prompt", "", disabled=not generate_history)
-
-generate_image = st.checkbox("🖼️ Generate Character Image")
-image_prompt = st.text_area("Image Prompt", "", disabled=not generate_image)
-
-generate_npc_toggle = st.checkbox("🧑‍🤝‍🧑 Generate NPC")
-npc_prompt = st.text_area("NPC Prompt", "", disabled=not generate_npc_toggle)
-
-generate_quest_toggle = st.checkbox("📜 Generate Quest")
-quest_prompt = st.text_area("Quest Prompt", "", disabled=not generate_quest_toggle)
-
-generate_music = st.checkbox("🎼 Generate Theme Song")
-music_prompt = st.text_input("Theme Song Prompt", value="", disabled=not generate_music)
+generate_music = st.checkbox("Generate Theme Song (Audiocraft)")
+generate_turnaround = st.checkbox("Generate 360° Turnaround")
+generate_location = st.checkbox("Generate Place of Origin")
+generate_extra = st.checkbox("Generate Extra Images")
 
 if st.button("Generate Character"):
     if not name.strip():
         st.warning("Please enter a name.")
     else:
         st.session_state.character = generate_character(name, selected_gender, selected_race)
-        
-        if generate_history:
-            st.session_state.character["History"] = generate_character_history(st.session_state.character, history_prompt)
-
-        if generate_image and image_prompt:
-            st.session_state.character["Image"] = generate_character_image(image_prompt)
-
-        if generate_npc_toggle and npc_prompt:
-            st.session_state.npc = generate_npc(npc_prompt)
-        else:
-            st.session_state.npc = {}
-
-        if generate_quest_toggle and quest_prompt:
-            st.session_state.quest = generate_quest(quest_prompt)
-        else:
-            st.session_state.quest = {}
+        st.session_state.character["History"] = generate_character_history(st.session_state.character)
+        st.session_state.character["Image"] = generate_character_image(st.session_state.character)
+        st.session_state.npc = generate_npc()
+        st.session_state.quest = generate_quest()
 
         st.success("Character Created!")
         char = st.session_state.character
+        st.image(char["Image"], caption="Character Portrait")
+        st.markdown(f"**Name:** {char['Name']}\n\n**Race:** {char['Race']}  \n**Class:** {char['Class']}  \n**Background:** {char['Background']}")
+        st.markdown("**History:**")
+        st.write(char["History"])
 
-        if "Image" in char:
-            st.image(char["Image"], caption="Character Portrait")
+        if generate_turnaround:
+            st.image(generate_character_image(char), caption="Turnaround Image")
+        if generate_location:
+            st.image(generate_character_image(char), caption="Place of Origin")
+        if generate_extra:
+            st.image(generate_character_image(char), caption="Extra Image 1")
+            st.image(generate_character_image(char), caption="Extra Image 2")
 
-        st.markdown(f"**Name:** {char['Name']}  ")
-        st.markdown(f"**Race:** {char['Race']}  ")
-        st.markdown(f"**Class:** {char['Class']}  ")
-        st.markdown(f"**Background:** {char['Background']}  ")
+        st.markdown("### 🧑‍🤝‍🧑 NPC")
+        st.write(st.session_state.npc)
 
-        if "History" in char:
-            st.markdown("**History:**")
-            st.write(char["History"])
+        st.markdown("### 📜 Quest")
+        st.write(st.session_state.quest)
 
-        if st.session_state.npc:
-            st.markdown("### 🧑‍🤝‍🧑 NPC")
-            st.write(st.session_state.npc["text"])
-
-        if st.session_state.quest:
-            st.markdown("### 📜 Quest")
-            st.write(st.session_state.quest["text"])
-
-        if generate_music and music_prompt.strip():
-            song_path = generate_theme_song(music_prompt)
+        if generate_music:
+            prompt = f"Fantasy orchestral theme for a {char['Race']} {char['Class']} named {char['Name']} from a {char['Background']} background."
+            song_path = generate_theme_song(prompt)
             if song_path and os.path.exists(song_path):
                 with open(song_path, "rb") as audio_file:
                     st.audio(audio_file.read(), format="audio/wav")
-                st.success("Theme song generated.")
             else:
                 st.warning("Failed to generate theme song. Check Audiocraft installation.")
 
