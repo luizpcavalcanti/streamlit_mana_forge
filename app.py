@@ -16,6 +16,7 @@ races = ["Human", "Elf", "Dwarf", "Halfling", "Gnome", "Half-Orc", "Tiefling", "
 classes = ["Fighter", "Wizard", "Rogue", "Cleric", "Barbarian", "Sorcerer", "Bard", "Monk", "Druid", "Ranger", "Paladin", "Warlock", "Artificer", "Blood Hunter", "Mystic", "Warden", "Berserker", "Necromancer", "Trickster", "Beast Master", "Alchemist", "Pyromancer", "Dark Knight"]
 backgrounds = ["Acolyte", "Folk Hero", "Sage", "Criminal", "Noble", "Hermit", "Outlander", "Entertainer", "Artisan", "Sailor", "Soldier", "Charlatan", "Knight", "Pirate", "Spy", "Archaeologist", "Gladiator", "Inheritor", "Haunted One", "Bounty Hunter", "Explorer", "Watcher", "Traveler", "Phantom", "Vigilante"]
 genders = ["Male", "Female", "Non-binary"]
+image_styles = ["Standard", "8bit Style", "Anime Style"]
 
 # Character generation
 def generate_character(name, gender, race, character_class, background):
@@ -41,13 +42,19 @@ def generate_character_history(character, generate_history=True):
         return response["choices"][0]["message"]["content"]
     return ""
 
-# DALL·E 3 character image
-def generate_character_image(character):
-    prompt = f"A full-body portrait of a {character['Gender']} {character['Race']} {character['Class']} with {character['Background']} vibes, heroic pose, detailed fantasy outfit."
-    response = openai.Image.create(model="dall-e-3", prompt=prompt, size="1024x1024")
+# Art-style-aware image generation
+def generate_character_image(character, style="Standard"):
+    base_prompt = f"A full-body portrait of a {character['Gender']} {character['Race']} {character['Class']} with {character['Background']} vibes, heroic pose, detailed fantasy outfit."
+
+    if style == "8bit Style":
+        base_prompt += " pixelated sprite art, 8-bit game style"
+    elif style == "Anime Style":
+        base_prompt += " anime art style, cel-shaded, colorful background"
+
+    response = openai.Image.create(model="dall-e-3", prompt=base_prompt, size="1024x1024")
     return response["data"][0]["url"]
 
-# NPC generation (optional)
+# NPC generation
 def generate_npc(generate_npc_text=True):
     if generate_npc_text:
         prompt = "Generate a unique fantasy NPC name and their profession."
@@ -63,7 +70,7 @@ def generate_npc(generate_npc_text=True):
     
     return {"name": name, "role": role, "backstory": backstory}
 
-# Quest generation (optional)
+# Quest generation
 def generate_quest(generate_quest_text=True):
     if generate_quest_text:
         prompt = "Create a fantasy quest with a title and short description."
@@ -77,7 +84,7 @@ def generate_quest(generate_quest_text=True):
     
     return {"title": title, "description": description}
 
-# Music generation using Audiocraft/MusicGen
+# Music generation
 def generate_theme_song(prompt_text, save_path="theme_song.wav"):
     try:
         from audiocraft.models import MusicGen
@@ -88,7 +95,7 @@ def generate_theme_song(prompt_text, save_path="theme_song.wav"):
         wav = model.generate([prompt_text])
         audio_write("output/theme_song", wav[0].cpu(), model.sample_rate, strategy="loudness", format="wav")
         return "output/theme_song.wav"
-    except Exception as e:
+    except Exception:
         return None
 
 # PDF export
@@ -128,10 +135,7 @@ name = st.text_input("Enter character name:")
 selected_race = st.selectbox("Select race:", races)
 selected_gender = st.selectbox("Select gender:", genders)
 
-# Checkbox options
-auto_generate_class_and_background = st.checkbox("Automatically generate class and background (or select manually)?", value=True)
-
-# Show class and background selection based on checkbox
+auto_generate_class_and_background = st.checkbox("Automatically generate class and background?", value=True)
 if auto_generate_class_and_background:
     character_class = random.choice(classes)
     background = random.choice(backgrounds)
@@ -139,6 +143,8 @@ if auto_generate_class_and_background:
 else:
     character_class = st.selectbox("Select class:", classes)
     background = st.selectbox("Select background:", backgrounds)
+
+selected_style = st.selectbox("Select Art Style for Image:", image_styles)
 
 generate_music = st.checkbox("Generate Theme Song (Audiocraft)")
 generate_turnaround = st.checkbox("Generate 360° Turnaround")
@@ -154,7 +160,7 @@ if st.button("Generate Character"):
     else:
         st.session_state.character = generate_character(name, selected_gender, selected_race, character_class, background)
         st.session_state.character["History"] = generate_character_history(st.session_state.character, generate_history)
-        st.session_state.character["Image"] = generate_character_image(st.session_state.character)
+        st.session_state.character["Image"] = generate_character_image(st.session_state.character, selected_style)
         st.session_state.npc = generate_npc(generate_npc_text)
         st.session_state.quest = generate_quest(generate_quest_text)
 
@@ -166,12 +172,12 @@ if st.button("Generate Character"):
         st.write(char["History"])
 
         if generate_turnaround:
-            st.image(generate_character_image(char), caption="Turnaround Image")
+            st.image(generate_character_image(char, selected_style), caption="Turnaround Image")
         if generate_location:
-            st.image(generate_character_image(char), caption="Place of Origin")
+            st.image(generate_character_image(char, selected_style), caption="Place of Origin")
         if generate_extra:
-            st.image(generate_character_image(char), caption="Extra Image 1")
-            st.image(generate_character_image(char), caption="Extra Image 2")
+            st.image(generate_character_image(char, selected_style), caption="Extra Image 1")
+            st.image(generate_character_image(char, selected_style), caption="Extra Image 2")
 
         st.markdown("### 🧑‍🤝‍🧑 NPC")
         st.write(st.session_state.npc)
