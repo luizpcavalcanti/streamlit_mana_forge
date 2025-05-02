@@ -45,6 +45,7 @@ def generate_character_image(character, style="Standard", custom_prompt=""):
     style_prompts = {
         "8bit Style": " pixelated 8-bit sprite, retro video game look",
         "Anime Style": " anime art style, colorful, cel-shaded",
+        "Oil Painting": " in the style of a renaissance oil painting, dramatic lighting",
         "Cyberpunk": " futuristic cyberpunk theme, neon lights, urban background",
         "Watercolor": " soft watercolor painting style, artistic brushstrokes"
     }
