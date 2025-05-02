@@ -7,8 +7,6 @@ from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 import base64
-import zipfile
-import tempfile
 
 # Load OpenAI key securely
 openai.api_key = st.secrets["OPENAI_API_KEY"]
@@ -29,14 +27,19 @@ def generate_character(name, gender, race):
         "Background": random.choice(backgrounds)
     }
 
-# GPT-based history
-def generate_character_history(character):
-    prompt = f"Create a short backstory for a {character['Race']} {character['Class']} named {character['Name']}. They come from a {character['Background']} background. Include motivations, key events, and a mystery."
-    response = openai.ChatCompletion.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "system", "content": "You are a creative storyteller."}, {"role": "user", "content": prompt}]
-    )
-    return response["choices"][0]["message"]["content"]
+# GPT-based history (optional)
+def generate_character_history(character, generate_history=True):
+    if generate_history:
+        prompt = f"Create a short backstory for a {character['Race']} {character['Class']} named {character['Name']}. They come from a {character['Background']} background. Include motivations, key events, and a mystery."
+        response = openai.ChatCompletion.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a creative storyteller."},
+                {"role": "user", "content": prompt}
+            ]
+        )
+        return response["choices"][0]["message"]["content"]
+    return ""
 
 # DALL·E 3 character image
 def generate_character_image(character):
@@ -44,22 +47,35 @@ def generate_character_image(character):
     response = openai.Image.create(model="dall-e-3", prompt=prompt, size="1024x1024")
     return response["data"][0]["url"]
 
-# NPC generation
-def generate_npc():
-    prompt = "Generate a unique fantasy NPC name and their profession."
-    response = openai.ChatCompletion.create(model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
-    npc_text = response["choices"][0]["message"]["content"].strip().split(", ")
-    name = npc_text[0]
-    role = npc_text[1] if len(npc_text) == 2 else random.choice(["merchant", "guard", "wizard", "priest"])
-    backstory = f"{name} is a {role} with a mysterious past."
+# NPC generation (optional)
+def generate_npc(generate_npc_text=True):
+    if generate_npc_text:
+        prompt = "Generate a unique fantasy NPC name and their profession."
+        response = openai.ChatCompletion.create(model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
+        npc_text = response["choices"][0]["message"]["content"].strip().split(", ")
+        name = npc_text[0]
+        role = npc_text[1] if len(npc_text) == 2 else random.choice(["merchant", "guard", "wizard", "priest"])
+        backstory = f"{name} is a {role} with a mysterious past."
+    else:
+        name = "Unknown"
+        role = "Unknown"
+        backstory = "No backstory provided."
+    
     return {"name": name, "role": role, "backstory": backstory}
 
-# Quest generation
-def generate_quest():
-    prompt = "Create a fantasy quest with a title and short description."
-    response = openai.ChatCompletion.create(model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
-    parts = response["choices"][0]["message"]["content"].strip().split("\n", 1)
-    return {"title": parts[0], "description": parts[1] if len(parts) > 1 else "A mysterious quest awaits."}
+# Quest generation (optional)
+def generate_quest(generate_quest_text=True):
+    if generate_quest_text:
+        prompt = "Create a fantasy quest with a title and short description."
+        response = openai.ChatCompletion.create(model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
+        parts = response["choices"][0]["message"]["content"].strip().split("\n", 1)
+        title = parts[0]
+        description = parts[1] if len(parts) > 1 else "A mysterious quest awaits."
+    else:
+        title = "Untitled Quest"
+        description = "No description provided."
+    
+    return {"title": title, "description": description}
 
 # Music generation using Audiocraft/MusicGen
 def generate_theme_song(prompt_text, save_path="theme_song.wav"):
@@ -70,8 +86,8 @@ def generate_theme_song(prompt_text, save_path="theme_song.wav"):
         model = MusicGen.get_pretrained('melody')
         model.set_generation_params(duration=10)
         wav = model.generate([prompt_text])
-        audio_write(save_path, wav[0].cpu(), model.sample_rate, strategy="loudness", format="wav")
-        return save_path
+        audio_write("output/theme_song", wav[0].cpu(), model.sample_rate, strategy="loudness", format="wav")
+        return "output/theme_song.wav"
     except Exception as e:
         return None
 
@@ -95,24 +111,15 @@ def create_pdf(character, npc, quest):
     buffer.seek(0)
     return buffer
 
-# Function to create zip file and trigger download
-def create_zip_file(character, npc, quest, pdf_file):
-    zip_buffer = BytesIO()
-    with zipfile.ZipFile(zip_buffer, mode='w', compression=zipfile.ZIP_DEFLATED) as archive:
-        # Add PDF
-        archive.writestr(f"{character['Name']}_profile.pdf", pdf_file.read())
-        # Add any other assets like images, music, etc.
-        if 'Image' in character:
-            archive.writestr(f"{character['Name']}_image.jpg", BytesIO(requests.get(character['Image']).content))
-        if 'Theme Song' in quest:
-            with open(quest['Theme Song'], 'rb') as song_file:
-                archive.writestr(f"{character['Name']}_theme_song.wav", song_file.read())
-    zip_buffer.seek(0)
-    
-    # Trigger download
-    b64 = base64.b64encode(zip_buffer.read()).decode()
-    href = f'<a href="data:application/zip;base64,{b64}" download="{character["Name"]}_game_assets.zip">Your assets are ready for download.</a>'
-    st.markdown(href, unsafe_allow_html=True)
+# Save data to JSON
+def save_to_json(character, npc, quest, file_name="character_data.json"):
+    data = {
+        "character": character,
+        "npc": npc,
+        "quest": quest
+    }
+    with open(file_name, 'w') as f:
+        json.dump(data, f, indent=4)
 
 # Streamlit UI
 st.title("🎭 Mana Forge Character Generator")
@@ -124,16 +131,19 @@ generate_music = st.checkbox("Generate Theme Song (Audiocraft)")
 generate_turnaround = st.checkbox("Generate 360° Turnaround")
 generate_location = st.checkbox("Generate Place of Origin")
 generate_extra = st.checkbox("Generate Extra Images")
+generate_history = st.checkbox("Generate Character History")
+generate_npc_text = st.checkbox("Generate NPC Text")
+generate_quest_text = st.checkbox("Generate Quest Text")
 
 if st.button("Generate Character"):
     if not name.strip():
         st.warning("Please enter a name.")
     else:
         st.session_state.character = generate_character(name, selected_gender, selected_race)
-        st.session_state.character["History"] = generate_character_history(st.session_state.character)
+        st.session_state.character["History"] = generate_character_history(st.session_state.character, generate_history)
         st.session_state.character["Image"] = generate_character_image(st.session_state.character)
-        st.session_state.npc = generate_npc()
-        st.session_state.quest = generate_quest()
+        st.session_state.npc = generate_npc(generate_npc_text)
+        st.session_state.quest = generate_quest(generate_quest_text)
 
         st.success("Character Created!")
         char = st.session_state.character
@@ -164,8 +174,11 @@ if st.button("Generate Character"):
                     st.audio(audio_file.read(), format="audio/wav")
             else:
                 st.warning("Failed to generate theme song. Check Audiocraft installation.")
-        
-        # Create PDF
-        pdf = create_pdf(st.session_state.character, st.session_state.npc, st.session_state.quest)
-        # Trigger zip creation and download
-        create_zip_file(st.session_state.character, st.session_state.npc, st.session_state.quest, pdf)
+
+        if st.button("📄 Download PDF"):
+            pdf = create_pdf(st.session_state.character, st.session_state.npc, st.session_state.quest)
+            st.download_button("Download PDF", pdf, file_name=f"{char['Name']}_profile.pdf", mime="application/pdf")
+
+        if st.button("💾 Save Data as JSON"):
+            save_to_json(st.session_state.character, st.session_state.npc, st.session_state.quest)
+            st.success("Data saved to JSON.")
