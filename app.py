@@ -167,9 +167,7 @@ if st.button("Generate Character"):
         st.success("Character Created!")
         char = st.session_state.character
         st.image(char["Image"], caption="Character Portrait")
-        st.markdown(f"**Name:** {char['Name']}\n\n**Race:** {char['Race']}  \n**Class:** {char['Class']}  \n**Background:** {char['Background']}")
-        st.markdown("**History:**")
-        st.write(char["History"])
+        st.markdown(f"**Name:** {char['Name']}**Race:** {char['Race']} **Class:** {char['Class']} **Background:** {char['Background']}")
 
         if generate_turnaround:
             st.image(generate_character_image(char, selected_style), caption="Turnaround Image")
