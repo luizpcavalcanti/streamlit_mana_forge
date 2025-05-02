@@ -11,6 +11,10 @@ import base64
 # Load OpenAI key securely
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
+# Initialize session state for multiple characters
+if "characters" not in st.session_state:
+    st.session_state.characters = []
+
 # Character traits
 races = ["Human", "Elf", "Dwarf", "Halfling", "Gnome", "Half-Orc", "Tiefling", "Dragonborn", "Kobold", "Lizardfolk", "Minotaur", "Troll", "Vampire", "Satyr", "Undead", "Lich", "Werewolf"]
 classes = ["Fighter", "Wizard", "Rogue", "Cleric", "Barbarian", "Sorcerer", "Bard", "Monk", "Druid", "Ranger", "Paladin", "Warlock", "Artificer", "Blood Hunter", "Mystic", "Warden", "Berserker", "Necromancer", "Trickster", "Beast Master", "Alchemist", "Pyromancer", "Dark Knight"]
@@ -28,7 +32,6 @@ def generate_character(name, gender, race, character_class, background):
         "Background": background
     }
 
-# GPT-based history (optional)
 def generate_character_history(character, generate_history=True):
     if generate_history:
         prompt = f"Create a short backstory for a {character['Race']} {character['Class']} named {character['Name']}. They come from a {character['Background']} background. Include motivations, key events, and a mystery."
@@ -42,7 +45,6 @@ def generate_character_history(character, generate_history=True):
         return response["choices"][0]["message"]["content"]
     return ""
 
-# Art-style-aware image generation
 def generate_character_image(character, style="Standard"):
     base_prompt = f"A full-body portrait of a {character['Gender']} {character['Race']} {character['Class']} with {character['Background']} vibes, heroic pose, detailed fantasy outfit."
 
@@ -54,7 +56,6 @@ def generate_character_image(character, style="Standard"):
     response = openai.Image.create(model="dall-e-3", prompt=base_prompt, size="1024x1024")
     return response["data"][0]["url"]
 
-# NPC generation
 def generate_npc(generate_npc_text=True):
     if generate_npc_text:
         prompt = "Generate a unique fantasy NPC name and their profession."
@@ -67,10 +68,9 @@ def generate_npc(generate_npc_text=True):
         name = "Unknown"
         role = "Unknown"
         backstory = "No backstory provided."
-    
+
     return {"name": name, "role": role, "backstory": backstory}
 
-# Quest generation
 def generate_quest(generate_quest_text=True):
     if generate_quest_text:
         prompt = "Create a fantasy quest with a title and short description."
@@ -81,10 +81,9 @@ def generate_quest(generate_quest_text=True):
     else:
         title = "Untitled Quest"
         description = "No description provided."
-    
+
     return {"title": title, "description": description}
 
-# Music generation
 def generate_theme_song(prompt_text, save_path="theme_song.wav"):
     try:
         from audiocraft.models import MusicGen
@@ -98,7 +97,6 @@ def generate_theme_song(prompt_text, save_path="theme_song.wav"):
     except Exception:
         return None
 
-# PDF export
 def create_pdf(character, npc, quest):
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=letter)
@@ -118,7 +116,6 @@ def create_pdf(character, npc, quest):
     buffer.seek(0)
     return buffer
 
-# Save data to JSON
 def save_to_json(character, npc, quest, file_name="character_data.json"):
     data = {
         "character": character,
@@ -158,44 +155,62 @@ if st.button("Generate Character"):
     if not name.strip():
         st.warning("Please enter a name.")
     else:
-        st.session_state.character = generate_character(name, selected_gender, selected_race, character_class, background)
-        st.session_state.character["History"] = generate_character_history(st.session_state.character, generate_history)
-        st.session_state.character["Image"] = generate_character_image(st.session_state.character, selected_style)
-        st.session_state.npc = generate_npc(generate_npc_text)
-        st.session_state.quest = generate_quest(generate_quest_text)
+        char = generate_character(name, selected_gender, selected_race, character_class, background)
+        char["History"] = generate_character_history(char, generate_history)
+        char["Image"] = generate_character_image(char, selected_style)
+        npc = generate_npc(generate_npc_text)
+        quest = generate_quest(generate_quest_text)
 
+        st.session_state.characters.append({"character": char, "npc": npc, "quest": quest})
         st.success("Character Created!")
-        char = st.session_state.character
-        st.image(char["Image"], caption="Character Portrait")
-        st.markdown(f"{char['Name']} {char['Race']} {char['Class']} {char['Background']}")
 
-        if generate_turnaround:
-            st.image(generate_character_image(char, selected_style), caption="Turnaround Image")
-        if generate_location:
-            st.image(generate_character_image(char, selected_style), caption="Place of Origin")
-        if generate_extra:
-            st.image(generate_character_image(char, selected_style), caption="Extra Image 1")
-            st.image(generate_character_image(char, selected_style), caption="Extra Image 2")
+# Tabs for output
+if st.session_state.characters:
+    for i, data in enumerate(st.session_state.characters):
+        char = data["character"]
+        npc = data["npc"]
+        quest = data["quest"]
 
-        st.markdown("### 🧑‍🤝‍🧑 NPC")
-        st.write(st.session_state.npc)
+        with st.expander(f"Character #{i+1}: {char['Name']}"):
+            tabs = st.tabs(["Character", "NPC", "Quest", "Music"])
 
-        st.markdown("### 📜 Quest")
-        st.write(st.session_state.quest)
+            with tabs[0]:
+                st.image(char["Image"], caption="Character Portrait")
+                st.markdown(f"**{char['Name']}** | {char['Race']} {char['Class']} | Background: {char['Background']}")
+                edited_history = st.text_area("Edit History", char["History"], key=f"history_{i}")
+                char["History"] = edited_history
 
-        if generate_music:
-            prompt = f"Fantasy orchestral theme for a {char['Race']} {char['Class']} named {char['Name']} from a {char['Background']} background."
-            song_path = generate_theme_song(prompt)
-            if song_path and os.path.exists(song_path):
-                with open(song_path, "rb") as audio_file:
-                    st.audio(audio_file.read(), format="audio/wav")
-            else:
-                st.warning("Failed to generate theme song. Check Audiocraft installation.")
+                if generate_turnaround:
+                    st.image(generate_character_image(char, selected_style), caption="Turnaround Image")
+                if generate_location:
+                    st.image(generate_character_image(char, selected_style), caption="Place of Origin")
+                if generate_extra:
+                    st.image(generate_character_image(char, selected_style), caption="Extra Image 1")
+                    st.image(generate_character_image(char, selected_style), caption="Extra Image 2")
 
-        if st.button("📄 Download PDF"):
-            pdf = create_pdf(st.session_state.character, st.session_state.npc, st.session_state.quest)
-            st.download_button("Download PDF", pdf, file_name=f"{char['Name']}_profile.pdf", mime="application/pdf")
+            with tabs[1]:
+                st.write(npc)
 
-        if st.button("💾 Save Data as JSON"):
-            save_to_json(st.session_state.character, st.session_state.npc, st.session_state.quest)
-            st.success("Data saved to JSON.")
+            with tabs[2]:
+                edited_quest = st.text_area("Edit Quest Description", quest["description"], key=f"quest_{i}")
+                quest["description"] = edited_quest
+                st.markdown(f"### {quest['title']}")
+                st.write(edited_quest)
+
+            with tabs[3]:
+                if generate_music:
+                    prompt = f"Fantasy orchestral theme for a {char['Race']} {char['Class']} named {char['Name']} from a {char['Background']} background."
+                    song_path = generate_theme_song(prompt)
+                    if song_path and os.path.exists(song_path):
+                        with open(song_path, "rb") as audio_file:
+                            st.audio(audio_file.read(), format="audio/wav")
+                    else:
+                        st.warning("Failed to generate theme song. Check Audiocraft installation.")
+
+            if st.button(f"📄 Download PDF #{i+1}"):
+                pdf = create_pdf(char, npc, quest)
+                st.download_button("Download PDF", pdf, file_name=f"{char['Name']}_profile.pdf", mime="application/pdf")
+
+            if st.button(f"💾 Save Data as JSON #{i+1}"):
+                save_to_json(char, npc, quest, file_name=f"{char['Name']}_data.json")
+                st.success("Data saved to JSON.")
