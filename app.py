@@ -19,8 +19,13 @@ genders = ["Male", "Female", "Non-binary"]
 
 # Character generation
 def generate_character(name, gender, race, auto_generate_class_and_background):
-    character_class = random.choice(classes) if auto_generate_class_and_background else st.selectbox("Select class:", classes)
-    background = random.choice(backgrounds) if auto_generate_class_and_background else st.selectbox("Select background:", backgrounds)
+    if auto_generate_class_and_background:
+        character_class = random.choice(classes)
+        background = random.choice(backgrounds)
+    else:
+        character_class = st.selectbox("Select class:", classes)
+        background = st.selectbox("Select background:", backgrounds)
+    
     return {
         "Name": name,
         "Gender": gender,
