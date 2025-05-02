@@ -6,7 +6,6 @@ import os
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
-import base64
 
 # Load OpenAI key securely
 openai.api_key = st.secrets["OPENAI_API_KEY"]
@@ -29,40 +28,64 @@ def generate_character(name, gender, race):
 
 # GPT-based history
 def generate_character_history(character):
-    prompt = f"Create a short backstory for a {character['Race']} {character['Class']} named {character['Name']}. They come from a {character['Background']} background. Include motivations, key events, and a mystery."
-    response = openai.ChatCompletion.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "You are a creative storyteller."},
-            {"role": "user", "content": prompt}
-        ]
-    )
-    return response["choices"][0]["message"]["content"]
+    try:
+        prompt = f"Create a short backstory for a {character['Race']} {character['Class']} named {character['Name']}. They come from a {character['Background']} background. Include motivations, key events, and a mystery."
+        response = openai.ChatCompletion.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a creative storyteller."},
+                {"role": "user", "content": prompt}
+            ]
+        )
+        return response["choices"][0]["message"]["content"]
+    except Exception as e:
+        return "[Error generating history]"
+
+# Place of origin
+def generate_place_of_origin(character):
+    try:
+        prompt = f"Invent a place of origin for a {character['Race']} {character['Class']} from a {character['Background']} background. Include the name, culture, and a hidden secret."
+        response = openai.ChatCompletion.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return response["choices"][0]["message"]["content"]
+    except Exception as e:
+        return "[Error generating place of origin]"
 
 # DALL·E 3 character image
 def generate_character_image(character):
-    prompt = f"A full-body portrait of a {character['Gender']} {character['Race']} {character['Class']} with {character['Background']} vibes, heroic pose, detailed fantasy outfit."
-    response = openai.Image.create(model="dall-e-3", prompt=prompt, size="1024x1024")
-    return response["data"][0]["url"]
+    try:
+        prompt = f"A full-body portrait of a {character['Gender']} {character['Race']} {character['Class']} with {character['Background']} vibes, heroic pose, detailed fantasy outfit."
+        response = openai.Image.create(model="dall-e-3", prompt=prompt, size="1024x1024")
+        return response["data"][0]["url"]
+    except Exception as e:
+        return None
 
 # NPC generation
 def generate_npc():
-    prompt = "Generate a unique fantasy NPC name and their profession."
-    response = openai.ChatCompletion.create(model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
-    npc_text = response["choices"][0]["message"]["content"].strip().split(", ")
-    name = npc_text[0]
-    role = npc_text[1] if len(npc_text) == 2 else random.choice(["merchant", "guard", "wizard", "priest"])
-    backstory = f"{name} is a {role} with a mysterious past."
-    return {"name": name, "role": role, "backstory": backstory}
+    try:
+        prompt = "Generate a unique fantasy NPC name and their profession."
+        response = openai.ChatCompletion.create(model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
+        npc_text = response["choices"][0]["message"]["content"].strip().split(", ")
+        name = npc_text[0]
+        role = npc_text[1] if len(npc_text) == 2 else random.choice(["merchant", "guard", "wizard", "priest"])
+        backstory = f"{name} is a {role} with a mysterious past."
+        return {"name": name, "role": role, "backstory": backstory}
+    except Exception:
+        return {"name": "Unnamed NPC", "role": "unknown", "backstory": "[Error generating NPC]"}
 
 # Quest generation
 def generate_quest():
-    prompt = "Create a fantasy quest with a title and short description."
-    response = openai.ChatCompletion.create(model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
-    parts = response["choices"][0]["message"]["content"].strip().split("\n", 1)
-    return {"title": parts[0], "description": parts[1] if len(parts) > 1 else "A mysterious quest awaits."}
+    try:
+        prompt = "Create a fantasy quest with a title and short description."
+        response = openai.ChatCompletion.create(model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
+        parts = response["choices"][0]["message"]["content"].strip().split("\n", 1)
+        return {"title": parts[0], "description": parts[1] if len(parts) > 1 else "A mysterious quest awaits."}
+    except Exception:
+        return {"title": "[Error generating quest]", "description": "[Error generating description]"}
 
-# Music generation using Audiocraft/MusicGen
+# Music generation
 def generate_theme_song(prompt_text, save_path="theme_song.wav"):
     try:
         from audiocraft.models import MusicGen
@@ -77,15 +100,19 @@ def generate_theme_song(prompt_text, save_path="theme_song.wav"):
         return None
 
 # PDF export
-def create_pdf(character, npc, quest):
+def create_pdf(character, npc, quest, place):
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=letter)
     y = 750
-    def write_line(text): nonlocal y; c.drawString(100, y, text); y -= 20
+    def write_line(text):
+        nonlocal y
+        c.drawString(100, y, text)
+        y -= 20
 
     write_line(f"Character: {character['Name']} ({character['Gender']}, {character['Race']}, {character['Class']})")
     write_line(f"Background: {character['Background']}")
     write_line(f"History: {character['History'][:200]}...")
+    write_line(f"Place of Origin: {place[:200]}...")
     write_line(f"NPC: {npc['name']} - {npc['role']}")
     write_line(f"NPC Backstory: {npc['backstory'][:100]}...")
     write_line(f"Quest: {quest['title']}")
@@ -116,6 +143,7 @@ if st.button("Generate Character"):
         st.session_state.character["Image"] = generate_character_image(st.session_state.character)
         st.session_state.npc = generate_npc()
         st.session_state.quest = generate_quest()
+        st.session_state.place = generate_place_of_origin(st.session_state.character) if generate_location else "Not generated."
 
         st.success("Character Created!")
         char = st.session_state.character
@@ -124,10 +152,12 @@ if st.button("Generate Character"):
         st.markdown("**History:**")
         st.write(char["History"])
 
+        if generate_location:
+            st.markdown("**Place of Origin:**")
+            st.write(st.session_state.place)
+
         if generate_turnaround:
             st.image(generate_character_image(char), caption="Turnaround Image")
-        if generate_location:
-            st.image(generate_character_image(char), caption="Place of Origin")
         if generate_extra:
             st.image(generate_character_image(char), caption="Extra Image 1")
             st.image(generate_character_image(char), caption="Extra Image 2")
@@ -148,5 +178,5 @@ if st.button("Generate Character"):
                 st.warning("Failed to generate theme song. Check Audiocraft installation.")
 
         if st.button("📄 Download PDF"):
-            pdf = create_pdf(st.session_state.character, st.session_state.npc, st.session_state.quest)
+            pdf = create_pdf(char, st.session_state.npc, st.session_state.quest, st.session_state.place)
             st.download_button("Download PDF", pdf, file_name=f"{char['Name']}_profile.pdf", mime="application/pdf")
