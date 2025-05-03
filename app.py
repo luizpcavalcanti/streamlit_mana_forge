@@ -105,9 +105,10 @@ def draw_wrapped_text(canvas, text, x, y, max_width, line_height):
 def create_pdf(character, npc, quest, images):
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=letter)
-    x, y = 50, 750
+    x, y = 50, 750  # Starting position for text
     line_height = 14
     max_width = 500
+    page_height = letter[1]
 
     def section(title, content):
         nonlocal y
@@ -115,8 +116,41 @@ def create_pdf(character, npc, quest, images):
         c.drawString(x, y, title)
         y -= line_height
         c.setFont("Helvetica", 10)
+        # Draw text, wrapping it to the specified width
         y = draw_wrapped_text(c, content, x, y, max_width, line_height)
-        y -= line_height
+        y -= line_height  # Extra spacing after each section
+
+    def check_page_space(required_space):
+        # Check if there's enough space for the content
+        if y - required_space < 0:
+            c.showPage()  # Start a new page
+            return 750  # Reset y for a new page
+        return y
+
+    # Add sections
+    section("Character Info", f"{character['Name']} ({character['Gender']}, {character['Race']}, {character['Class']})")
+    section("Background", character['Background'])
+    section("History", character.get("History", ""))
+    section("NPC", f"{npc['name']} - {npc['role']}")
+    section("NPC Backstory", npc['backstory'])
+    section("Quest", f"{quest['title']}")
+    section("Quest Description", quest['description'])
+
+    # Add images, checking for space before placing each
+    for idx, url in enumerate(images):
+        img = download_image(url)
+        if img:
+            required_space = 270  # Space needed for image placement
+            y = check_page_space(required_space)
+
+            # Draw image with the larger size
+            c.drawImage(img, x, y - 250, width=400, height=400, preserveAspectRatio=True)
+            y -= 420  # Adjust the y position after the image
+
+    c.showPage()
+    c.save()
+    buffer.seek(0)
+    return buffer
 
     section("Character Info", f"{character['Name']} ({character['Gender']}, {character['Race']}, {character['Class']})")
     section("Background", character['Background'])
