@@ -144,7 +144,7 @@ def create_pdf(character, npc, quest, images):
             y = check_page_space(required_space)
 
             # Draw image with the larger size
-            c.drawImage(img, x, y - 250, width=900, height=900, preserveAspectRatio=True)
+            c.drawImage(img, x, y - 250, width=400, height=400, preserveAspectRatio=True)
             y -= 420  # Adjust the y position after the image
 
     c.showPage()
@@ -214,35 +214,33 @@ if st.button("Generate Character"):
         st.success("Character Created!")
 
 # --- Display Tabs ---
-for i, data in enumerate(st.session_state.characters):
-    char = data["character"]
-    npc = data["npc"]
-    quest = data["quest"]
-    images = data["images"]
+if st.session_state.characters:
+    for i, data in enumerate(st.session_state.characters):
+        char = data["character"]
+        npc = data["npc"]
+        quest = data["quest"]
+        images = data["images"]
 
-    with st.expander(f"Character {i+1} - {char['Name']}"):
-        with st.expander("Character Info"):
+        with st.expander(f"Character {i+1} - {char['Name']}"):
             st.write(f"**Race**: {char['Race']} | **Class**: {char['Class']} | **Gender**: {char['Gender']} | **Background**: {char['Background']}")
-        with st.expander("History"):
             st.write(f"**History**: {char.get('History', 'No history generated')}")
-        with st.expander("NPC"):
             st.write(f"**NPC**: {npc['name']} - {npc['role']}")
             st.write(f"**NPC Backstory**: {npc['backstory']}")
-        with st.expander("Quest"):
             st.write(f"**Quest**: {quest['title']}")
             st.write(f"**Quest Description**: {quest['description']}")
-        with st.expander("Images"):
+
+            # Show Image
             for img_url in images:
                 st.image(img_url, use_container_width=True)
 
-    # Export Options
-    with open(f"{char['Name']}_character_data.json", "w") as f:
-        json.dump({"character": char, "npc": npc, "quest": quest}, f, indent=4)
+            # Export Options
+            with open(f"{char['Name']}_character_data.json", "w") as f:
+                json.dump({"character": char, "npc": npc, "quest": quest}, f, indent=4)
 
-    pdf_buffer = create_pdf(char, npc, quest, images)
-    st.download_button(
-        label="Download Character PDF",
-        data=pdf_buffer,
-        file_name=f"{char['Name']}_Character.pdf",
-        mime="application/pdf"
-    )
+            pdf_buffer = create_pdf(char, npc, quest, images)
+            st.download_button(
+                label="Download Character PDF",
+                data=pdf_buffer,
+                file_name=f"{char['Name']}_Character.pdf",
+                mime="application/pdf"
+            )
