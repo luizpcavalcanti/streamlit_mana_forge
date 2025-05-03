@@ -152,28 +152,6 @@ def create_pdf(character, npc, quest, images):
     buffer.seek(0)
     return buffer
 
-    section("Character Info", f"{character['Name']} ({character['Gender']}, {character['Race']}, {character['Class']})")
-    section("Background", character['Background'])
-    section("History", character.get("History", ""))
-    section("NPC", f"{npc['name']} - {npc['role']}")
-    section("NPC Backstory", npc['backstory'])
-    section("Quest", f"{quest['title']}")
-    section("Quest Description", quest['description'])
-
-    for idx, url in enumerate(images):
-        img = download_image(url)
-        if img:
-            if y < 300:
-                c.showPage()
-                y = 750
-            c.drawImage(img, x, y - 250, width=200, height=200, preserveAspectRatio=True)
-            y -= 270
-
-    c.showPage()
-    c.save()
-    buffer.seek(0)
-    return buffer
-
 def save_to_json(character, npc, quest, file_name="character_data.json"):
     data = {
         "character": character,
@@ -236,32 +214,33 @@ if st.button("Generate Character"):
         st.success("Character Created!")
 
 # --- Display Tabs ---
-for i, data in enumerate(st.session_state.characters):
-    char = data["character"]
-    npc = data["npc"]
-    quest = data["quest"]
-    images = data["images"]
+if st.session_state.characters:
+    for i, data in enumerate(st.session_state.characters):
+        char = data["character"]
+        npc = data["npc"]
+        quest = data["quest"]
+        images = data["images"]
 
-    st.subheader(f"Character {i+1} - {char['Name']}")
-    st.write(f"**Race**: {char['Race']} | **Class**: {char['Class']} | **Gender**: {char['Gender']} | **Background**: {char['Background']}")
-    st.write(f"**History**: {char.get('History', 'No history generated')}")
-    st.write(f"**NPC**: {npc['name']} - {npc['role']}")
-    st.write(f"**NPC Backstory**: {npc['backstory']}")
-    st.write(f"**Quest**: {quest['title']}")
-    st.write(f"**Quest Description**: {quest['description']}")
+        with st.expander(f"Character {i+1} - {char['Name']}"):
+            st.write(f"**Race**: {char['Race']} | **Class**: {char['Class']} | **Gender**: {char['Gender']} | **Background**: {char['Background']}")
+            st.write(f"**History**: {char.get('History', 'No history generated')}")
+            st.write(f"**NPC**: {npc['name']} - {npc['role']}")
+            st.write(f"**NPC Backstory**: {npc['backstory']}")
+            st.write(f"**Quest**: {quest['title']}")
+            st.write(f"**Quest Description**: {quest['description']}")
 
-    # Show Image
-    for img_url in images:
-        st.image(img_url, use_container_width=True)
+            # Show Image
+            for img_url in images:
+                st.image(img_url, use_container_width=True)
 
-    # Export Options
-    with open(f"{char['Name']}_character_data.json", "w") as f:
-        json.dump({"character": char, "npc": npc, "quest": quest}, f, indent=4)
+            # Export Options
+            with open(f"{char['Name']}_character_data.json", "w") as f:
+                json.dump({"character": char, "npc": npc, "quest": quest}, f, indent=4)
 
-    pdf_buffer = create_pdf(char, npc, quest, images)
-    st.download_button(
-        label="Download Character PDF",
-        data=pdf_buffer,
-        file_name=f"{char['Name']}_Character.pdf",
-        mime="application/pdf"
-    )
+            pdf_buffer = create_pdf(char, npc, quest, images)
+            st.download_button(
+                label="Download Character PDF",
+                data=pdf_buffer,
+                file_name=f"{char['Name']}_Character.pdf",
+                mime="application/pdf"
+            )
