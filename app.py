@@ -224,7 +224,7 @@ if st.session_state.characters:
 
         with st.expander(f"Character {i+1} - {char['Name']}"):
             # Create tabs/sections for JSON content
-            tabs = st.beta_expander("Character Content")
+            tabs = st.expander("Character Content")
             with tabs:
                 st.subheader("Character Info")
                 st.json(char)  # Display character info as JSON
