@@ -6,12 +6,13 @@ import os
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
+from reportlab.lib.utils import simpleSplit
 import base64
 
 # Load OpenAI key securely
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
-# Initialize session state for multiple characters
+# Initialize session state
 if "characters" not in st.session_state:
     st.session_state.characters = []
 
@@ -100,18 +101,36 @@ def generate_theme_song(prompt_text, save_path="theme_song.wav"):
 def create_pdf(character, npc, quest):
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=letter)
-    y = 750
-    def write_line(text): nonlocal y; c.drawString(100, y, text); y -= 20
+    width, height = letter
+    margin = 50
+    y = height - margin
+    max_width = width - 2 * margin
 
-    write_line(f"Character: {character['Name']} ({character['Gender']}, {character['Race']}, {character['Class']})")
-    write_line(f"Background: {character['Background']}")
-    write_line(f"History: {character['History'][:200]}...")
-    write_line(f"NPC: {npc['name']} - {npc['role']}")
-    write_line(f"NPC Backstory: {npc['backstory'][:100]}...")
-    write_line(f"Quest: {quest['title']}")
-    write_line(f"Quest Desc: {quest['description'][:150]}...")
+    def write_paragraph(text, line_height=14):
+        nonlocal y
+        wrapped = simpleSplit(text, 'Helvetica', 12, max_width)
+        for line in wrapped:
+            if y < margin:
+                c.showPage()
+                y = height - margin
+            c.drawString(margin, y, line)
+            y -= line_height
+        y -= line_height // 2
 
-    c.showPage()
+    c.setFont("Helvetica", 12)
+    write_paragraph(f"Character: {character['Name']} ({character['Gender']}, {character['Race']}, {character['Class']})")
+    write_paragraph(f"Background: {character['Background']}")
+    write_paragraph("History:")
+    write_paragraph(character['History'])
+
+    write_paragraph(f"NPC: {npc['name']} - {npc['role']}")
+    write_paragraph("NPC Backstory:")
+    write_paragraph(npc['backstory'])
+
+    write_paragraph(f"Quest: {quest['title']}")
+    write_paragraph("Quest Description:")
+    write_paragraph(quest['description'])
+
     c.save()
     buffer.seek(0)
     return buffer
