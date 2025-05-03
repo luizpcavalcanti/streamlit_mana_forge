@@ -224,7 +224,7 @@ if st.session_state.characters:
 
         with st.expander(f"Character {i+1} - {char['Name']}"):
             # Create tabs/sections for JSON content
-            tabs = st.expander("Character Content")
+            tabs = st.beta_expander("Character Content")
             with tabs:
                 st.subheader("Character Info")
                 st.json(char)  # Display character info as JSON
@@ -255,4 +255,4 @@ if st.session_state.characters:
                 label="Download Character PDF",
                 data=pdf_buffer,
                 file_name=f"{char['Name']}_Character.pdf",
-                mime="application/pdf")
+                mime="application/pdf"
