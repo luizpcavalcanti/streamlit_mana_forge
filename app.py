@@ -6,8 +6,9 @@ import os
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
-from reportlab.lib.utils import simpleSplit
+from reportlab.lib.utils import simpleSplit, ImageReader
 import base64
+import requests
 
 # Load OpenAI key securely
 openai.api_key = st.secrets["OPENAI_API_KEY"]
@@ -23,7 +24,6 @@ backgrounds = ["Acolyte", "Folk Hero", "Sage", "Criminal", "Noble", "Hermit", "O
 genders = ["Male", "Female", "Non-binary"]
 image_styles = ["Standard", "8bit Style", "Anime Style"]
 
-
 def generate_character(name, gender, race, character_class, background):
     return {
         "Name": name,
@@ -38,10 +38,7 @@ def generate_character_history(character, generate_history=True):
         prompt = f"Create a short backstory for a {character['Race']} {character['Class']} named {character['Name']}. They come from a {character['Background']} background. Include motivations, key events, and a mystery."
         response = openai.ChatCompletion.create(
             model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "You are a creative storyteller."},
-                {"role": "user", "content": prompt}
-            ]
+            messages=[{"role": "system", "content": "You are a creative storyteller."}, {"role": "user", "content": prompt}]
         )
         return response["choices"][0]["message"]["content"]
     return ""
@@ -209,40 +206,28 @@ for i, data in enumerate(st.session_state.characters):
     char = data["character"]
     npc = data["npc"]
     quest = data["quest"]
-    image_urls = data["images"]
+    images = data["images"]
 
-    with st.expander(f"Character #{i+1}: {char['Name']}"):
-        tabs = st.tabs(["Character", "NPC", "Quest", "Music"])
+    st.subheader(f"Character {i+1} - {char['Name']}")
+    st.write(f"**Race**: {char['Race']} | **Class**: {char['Class']} | **Gender**: {char['Gender']} | **Background**: {char['Background']}")
+    st.write(f"**History**: {char.get('History', 'No history generated')}")
+    st.write(f"**NPC**: {npc['name']} - {npc['role']}")
+    st.write(f"**NPC Backstory**: {npc['backstory']}")
+    st.write(f"**Quest**: {quest['title']}")
+    st.write(f"**Quest Description**: {quest['description']}")
 
-        with tabs[0]:
-            st.image(char["Image"], caption="Main Portrait")
-            st.markdown(f"**{char['Name']}** | {char['Race']} {char['Class']} | Background: {char['Background']}")
-            char["History"] = st.text_area("Edit History", char["History"], key=f"history_{i}")
-            for j, url in enumerate(image_urls[1:], start=1):
-                st.image(url, caption=f"Extra Image {j}")
+    # Show Image
+    for img_url in images:
+        st.image(img_url, use_column_width=True)
 
-        with tabs[1]:
-            st.write(npc)
+    # Export Options
+    with open(f"{char['Name']}_character_data.json", "w") as f:
+        json.dump({"character": char, "npc": npc, "quest": quest}, f, indent=4)
 
-        with tabs[2]:
-            quest["description"] = st.text_area("Edit Quest Description", quest["description"], key=f"quest_{i}")
-            st.markdown(f"### {quest['title']}")
-            st.write(quest["description"])
-
-        with tabs[3]:
-            if generate_music:
-                prompt = f"Fantasy orchestral theme for a {char['Race']} {char['Class']} named {char['Name']} from a {char['Background']} background."
-                song_path = "output/theme_song.wav"
-                if os.path.exists(song_path):
-                    with open(song_path, "rb") as audio_file:
-                        st.audio(audio_file.read(), format="audio/wav")
-                else:
-                    st.warning("Theme song not found. Check Audiocraft setup.")
-
-        if st.button(f"📄 Download PDF #{i+1}"):
-            pdf = create_pdf(char, npc, quest, image_urls)
-            st.download_button("Download PDF", pdf, file_name=f"{char['Name']}_profile.pdf", mime="application/pdf")
-
-        if st.button(f"💾 Save Data as JSON #{i+1}"):
-            save_to_json(char, npc, quest, file_name=f"{char['Name']}_data.json")
-            st.success("Data saved to JSON.")
+    pdf_buffer = create_pdf(char, npc, quest, images)
+    st.download_button(
+        label="Download Character PDF",
+        data=pdf_buffer,
+        file_name=f"{char['Name']}_Character.pdf",
+        mime="application/pdf"
+    )
