@@ -108,7 +108,7 @@ def create_pdf(character, npc, quest, images):
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=letter)
     x, y = 50, 750
-    line_height = 14
+    line_height = 64
     max_width = 500
 
     def section(title, content):
