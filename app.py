@@ -127,27 +127,6 @@ def save_to_json(character, npc, quest, file_name="character_data.json"):
 
 # Streamlit UI
 st.title("🎭 Mana Forge Character Generator")
-# Load characters from uploaded JSON
-st.subheader("🔁 Load Previous Session")
-uploaded_json = st.file_uploader("Upload character JSON file", type="json")
-
-if uploaded_json:
-    data = json.load(uploaded_json)
-    # Ensure it's in the expected format
-    if isinstance(data, dict) and "character" in data and "npc" in data and "quest" in data:
-        st.session_state.characters.append({
-            "character": data["character"],
-            "npc": data["npc"],
-            "quest": data["quest"]
-        })
-        st.success(f"Loaded character: {data['character'].get('Name', 'Unknown')}")
-    elif isinstance(data, list):
-        for entry in data:
-            if "character" in entry and "npc" in entry and "quest" in entry:
-                st.session_state.characters.append(entry)
-        st.success(f"Loaded {len(data)} characters from session.")
-    else:
-        st.error("Invalid JSON structure.")
 
 name = st.text_input("Enter character name:")
 selected_race = st.selectbox("Select race:", races)
