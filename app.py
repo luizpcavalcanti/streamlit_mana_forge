@@ -221,17 +221,17 @@ for i, data in enumerate(st.session_state.characters):
     images = data["images"]
 
     with st.expander(f"Character {i+1} - {char['Name']}"):
-        with st.beta_expander("Character Info"):
+        with st.expander("Character Info"):
             st.write(f"**Race**: {char['Race']} | **Class**: {char['Class']} | **Gender**: {char['Gender']} | **Background**: {char['Background']}")
-        with st.beta_expander("History"):
+        with st.expander("History"):
             st.write(f"**History**: {char.get('History', 'No history generated')}")
-        with st.beta_expander("NPC"):
+        with st.expander("NPC"):
             st.write(f"**NPC**: {npc['name']} - {npc['role']}")
             st.write(f"**NPC Backstory**: {npc['backstory']}")
-        with st.beta_expander("Quest"):
+        with st.expander("Quest"):
             st.write(f"**Quest**: {quest['title']}")
             st.write(f"**Quest Description**: {quest['description']}")
-        with st.beta_expander("Images"):
+        with st.expander("Images"):
             for img_url in images:
                 st.image(img_url, use_container_width=True)
 
