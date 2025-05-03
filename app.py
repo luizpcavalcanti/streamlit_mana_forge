@@ -23,6 +23,7 @@ backgrounds = ["Acolyte", "Folk Hero", "Sage", "Criminal", "Noble", "Hermit", "O
 genders = ["Male", "Female", "Non-binary"]
 image_styles = ["Standard", "8bit Style", "Anime Style"]
 
+
 def generate_character(name, gender, race, character_class, background):
     return {
         "Name": name,
