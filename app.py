@@ -218,7 +218,7 @@ for i, data in enumerate(st.session_state.characters):
 
     # Show Image
     for img_url in images:
-        st.image(img_url, use_column_width=True)
+        st.image(img_url, use_container_width=True)
 
     # Export Options
     with open(f"{char['Name']}_character_data.json", "w") as f:
