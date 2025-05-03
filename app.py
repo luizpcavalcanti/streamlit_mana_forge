@@ -144,7 +144,7 @@ def create_pdf(character, npc, quest, images):
             y = check_page_space(required_space)
 
             # Draw image with the larger size
-            c.drawImage(img, x, y - 50, width=400, height=400, preserveAspectRatio=True)
+            c.drawImage(img, x, y - 650, width=400, height=400, preserveAspectRatio=True)
             y -= 550  # Adjust the y position after the image
 
     c.showPage()
