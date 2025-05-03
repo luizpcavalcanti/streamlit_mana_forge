@@ -160,10 +160,10 @@ def save_to_json(character, npc, quest, file_name="character_data.json"):
     }
     with open(file_name, 'w') as f:
         json.dump(data, f, indent=4)
+
 # --- Streamlit UI ---
 st.title("🎭 Mana Forge Character Generator")
 
-# Input fields
 name = st.text_input("Enter character name:")
 selected_race = st.selectbox("Select race:", races)
 selected_gender = st.selectbox("Select gender:", genders)
@@ -179,7 +179,6 @@ else:
 
 selected_style = st.selectbox("Select Art Style:", image_styles)
 
-# Options for additional content
 generate_music = st.checkbox("Generate Theme Song (Audiocraft)")
 generate_turnaround = st.checkbox("Generate 360° Turnaround")
 generate_location = st.checkbox("Generate Place of Origin")
@@ -214,7 +213,7 @@ if st.button("Generate Character"):
         })
         st.success("Character Created!")
 
-# --- Display Tabs with JSON Content ---
+# --- Display Tabs ---
 if st.session_state.characters:
     for i, data in enumerate(st.session_state.characters):
         char = data["character"]
@@ -223,23 +222,12 @@ if st.session_state.characters:
         images = data["images"]
 
         with st.expander(f"Character {i+1} - {char['Name']}"):
-            # Create tabs/sections for JSON content
-            tabs = st.beta_expander("Character Content")
-            with tabs:
-                st.subheader("Character Info")
-                st.json(char)  # Display character info as JSON
-
-            with tabs:
-                st.subheader("History")
-                st.json(char.get("History", "No history generated"))
-
-            with tabs:
-                st.subheader("NPC")
-                st.json(npc)
-
-            with tabs:
-                st.subheader("Quest")
-                st.json(quest)
+            st.write(f"**Race**: {char['Race']} | **Class**: {char['Class']} | **Gender**: {char['Gender']} | **Background**: {char['Background']}")
+            st.write(f"**History**: {char.get('History', 'No history generated')}")
+            st.write(f"**NPC**: {npc['name']} - {npc['role']}")
+            st.write(f"**NPC Backstory**: {npc['backstory']}")
+            st.write(f"**Quest**: {quest['title']}")
+            st.write(f"**Quest Description**: {quest['description']}")
 
             # Show Image
             for img_url in images:
@@ -249,10 +237,10 @@ if st.session_state.characters:
             with open(f"{char['Name']}_character_data.json", "w") as f:
                 json.dump({"character": char, "npc": npc, "quest": quest}, f, indent=4)
 
-            # Create and offer PDF download
             pdf_buffer = create_pdf(char, npc, quest, images)
             st.download_button(
                 label="Download Character PDF",
                 data=pdf_buffer,
                 file_name=f"{char['Name']}_Character.pdf",
                 mime="application/pdf"
+            )
