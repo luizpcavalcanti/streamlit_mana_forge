@@ -255,4 +255,4 @@ if st.session_state.characters:
                 label="Download Character PDF",
                 data=pdf_buffer,
                 file_name=f"{char['Name']}_Character.pdf",
-                mime="application/pdf"
+                mime="application/pdf")
