@@ -91,7 +91,7 @@ def draw_wrapped_text(canvas, text, x, y, max_width, line_height):
     line = ""
     for word in words:
         test_line = f"{line} {word}".strip()
-        if stringWidth(test_line, "Helvetica", 10) > max_width:
+        if stringWidth(test_line, "Helvetica", 7) > max_width:
             canvas.drawString(x, y, line)
             y -= line_height
             line = word
@@ -106,16 +106,16 @@ def create_pdf(character, npc, quest, images):
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=letter)
     x, y = 50, 750  # Starting position for text
-    line_height = 14
+    line_height = 12
     max_width = 500
     page_height = letter[1]
 
     def section(title, content):
         nonlocal y
-        c.setFont("Helvetica-Bold", 12)
+        c.setFont("Helvetica-Bold", 10)
         c.drawString(x, y, title)
         y -= line_height
-        c.setFont("Helvetica", 10)
+        c.setFont("Helvetica", 8)
         # Draw text, wrapping it to the specified width
         y = draw_wrapped_text(c, content, x, y, max_width, line_height)
         y -= line_height  # Extra spacing after each section
@@ -144,8 +144,8 @@ def create_pdf(character, npc, quest, images):
             y = check_page_space(required_space)
 
             # Draw image with the larger size
-            c.drawImage(img, x, y - 250, width=400, height=400, preserveAspectRatio=True)
-            y -= 420  # Adjust the y position after the image
+            c.drawImage(img, x, y - 250, width=900, height=900, preserveAspectRatio=True)
+            y -= 0  # Adjust the y position after the image
 
     c.showPage()
     c.save()
