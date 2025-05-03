@@ -22,8 +22,6 @@ classes = ["Fighter", "Wizard", "Rogue", "Cleric", "Barbarian", "Sorcerer", "Bar
 backgrounds = ["Acolyte", "Folk Hero", "Sage", "Criminal", "Noble", "Hermit", "Outlander", "Entertainer", "Artisan", "Sailor", "Soldier", "Charlatan", "Knight", "Pirate", "Spy", "Archaeologist", "Gladiator", "Inheritor", "Haunted One", "Bounty Hunter", "Explorer", "Watcher", "Traveler", "Phantom", "Vigilante"]
 genders = ["Male", "Female", "Non-binary"]
 image_styles = ["Standard", "8bit Style", "Anime Style"]
-
-# Character generation
 def generate_character(name, gender, race, character_class, background):
     return {
         "Name": name,
@@ -48,12 +46,10 @@ def generate_character_history(character, generate_history=True):
 
 def generate_character_image(character, style="Standard"):
     base_prompt = f"A full-body portrait of a {character['Gender']} {character['Race']} {character['Class']} with {character['Background']} vibes, heroic pose, detailed fantasy outfit."
-
     if style == "8bit Style":
         base_prompt += " pixelated sprite art, 8-bit game style"
     elif style == "Anime Style":
         base_prompt += " anime art style, cel-shaded, colorful background"
-
     response = openai.Image.create(model="dall-e-3", prompt=base_prompt, size="1024x1024")
     return response["data"][0]["url"]
 
@@ -69,7 +65,6 @@ def generate_npc(generate_npc_text=True):
         name = "Unknown"
         role = "Unknown"
         backstory = "No backstory provided."
-
     return {"name": name, "role": role, "backstory": backstory}
 
 def generate_quest(generate_quest_text=True):
@@ -82,55 +77,66 @@ def generate_quest(generate_quest_text=True):
     else:
         title = "Untitled Quest"
         description = "No description provided."
-
     return {"title": title, "description": description}
 
-def generate_theme_song(prompt_text, save_path="theme_song.wav"):
+def download_image(image_url):
     try:
-        from audiocraft.models import MusicGen
-        from audiocraft.data.audio import audio_write
-
-        model = MusicGen.get_pretrained('melody')
-        model.set_generation_params(duration=10)
-        wav = model.generate([prompt_text])
-        audio_write("output/theme_song", wav[0].cpu(), model.sample_rate, strategy="loudness", format="wav")
-        return "output/theme_song.wav"
-    except Exception:
+        response = requests.get(image_url)
+        return ImageReader(BytesIO(response.content))
+    except:
         return None
 
-def create_pdf(character, npc, quest):
+def draw_wrapped_text(canvas, text, x, y, max_width, line_height):
+    from reportlab.pdfbase.pdfmetrics import stringWidth
+    words = text.split()
+    line = ""
+    for word in words:
+        test_line = f"{line} {word}".strip()
+        if stringWidth(test_line, "Helvetica", 10) > max_width:
+            canvas.drawString(x, y, line)
+            y -= line_height
+            line = word
+        else:
+            line = test_line
+    if line:
+        canvas.drawString(x, y, line)
+        y -= line_height
+    return y
+
+def create_pdf(character, npc, quest, images):
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=letter)
-    width, height = letter
-    margin = 50
-    y = height - margin
-    max_width = width - 2 * margin
+    x, y = 50, 750
+    line_height = 14
+    max_width = 500
 
-    def write_paragraph(text, line_height=14):
+    def section(title, content):
         nonlocal y
-        wrapped = simpleSplit(text, 'Helvetica', 12, max_width)
-        for line in wrapped:
-            if y < margin:
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(x, y, title)
+        y -= line_height
+        c.setFont("Helvetica", 10)
+        y = draw_wrapped_text(c, content, x, y, max_width, line_height)
+        y -= line_height
+
+    section("Character Info", f"{character['Name']} ({character['Gender']}, {character['Race']}, {character['Class']})")
+    section("Background", character['Background'])
+    section("History", character.get("History", ""))
+    section("NPC", f"{npc['name']} - {npc['role']}")
+    section("NPC Backstory", npc['backstory'])
+    section("Quest", f"{quest['title']}")
+    section("Quest Description", quest['description'])
+
+    for idx, url in enumerate(images):
+        img = download_image(url)
+        if img:
+            if y < 300:
                 c.showPage()
-                y = height - margin
-            c.drawString(margin, y, line)
-            y -= line_height
-        y -= line_height // 2
+                y = 750
+            c.drawImage(img, x, y - 250, width=200, height=200, preserveAspectRatio=True)
+            y -= 270
 
-    c.setFont("Helvetica", 12)
-    write_paragraph(f"Character: {character['Name']} ({character['Gender']}, {character['Race']}, {character['Class']})")
-    write_paragraph(f"Background: {character['Background']}")
-    write_paragraph("History:")
-    write_paragraph(character['History'])
-
-    write_paragraph(f"NPC: {npc['name']} - {npc['role']}")
-    write_paragraph("NPC Backstory:")
-    write_paragraph(npc['backstory'])
-
-    write_paragraph(f"Quest: {quest['title']}")
-    write_paragraph("Quest Description:")
-    write_paragraph(quest['description'])
-
+    c.showPage()
     c.save()
     buffer.seek(0)
     return buffer
@@ -144,14 +150,14 @@ def save_to_json(character, npc, quest, file_name="character_data.json"):
     with open(file_name, 'w') as f:
         json.dump(data, f, indent=4)
 
-# Streamlit UI
+# --- Streamlit UI ---
 st.title("🎭 Mana Forge Character Generator")
 
 name = st.text_input("Enter character name:")
 selected_race = st.selectbox("Select race:", races)
 selected_gender = st.selectbox("Select gender:", genders)
 
-auto_generate_class_and_background = st.checkbox("Automatically generate class and background?", value=True)
+auto_generate_class_and_background = st.checkbox("Auto-generate class & background?", value=True)
 if auto_generate_class_and_background:
     character_class = random.choice(classes)
     background = random.choice(backgrounds)
@@ -160,7 +166,7 @@ else:
     character_class = st.selectbox("Select class:", classes)
     background = st.selectbox("Select background:", backgrounds)
 
-selected_style = st.selectbox("Select Art Style for Image:", image_styles)
+selected_style = st.selectbox("Select Art Style:", image_styles)
 
 generate_music = st.checkbox("Generate Theme Song (Audiocraft)")
 generate_turnaround = st.checkbox("Generate 360° Turnaround")
@@ -176,60 +182,65 @@ if st.button("Generate Character"):
     else:
         char = generate_character(name, selected_gender, selected_race, character_class, background)
         char["History"] = generate_character_history(char, generate_history)
-        char["Image"] = generate_character_image(char, selected_style)
+        image_urls = [generate_character_image(char, selected_style)]
+        if generate_turnaround:
+            image_urls.append(generate_character_image(char, selected_style))
+        if generate_location:
+            image_urls.append(generate_character_image(char, selected_style))
+        if generate_extra:
+            image_urls.append(generate_character_image(char, selected_style))
+            image_urls.append(generate_character_image(char, selected_style))
+        char["Image"] = image_urls[0]  # For main display
         npc = generate_npc(generate_npc_text)
         quest = generate_quest(generate_quest_text)
 
-        st.session_state.characters.append({"character": char, "npc": npc, "quest": quest})
+        st.session_state.characters.append({
+            "character": char,
+            "npc": npc,
+            "quest": quest,
+            "images": image_urls
+        })
         st.success("Character Created!")
 
-# Tabs for output
-if st.session_state.characters:
-    for i, data in enumerate(st.session_state.characters):
-        char = data["character"]
-        npc = data["npc"]
-        quest = data["quest"]
+# --- Display Tabs ---
+for i, data in enumerate(st.session_state.characters):
+    char = data["character"]
+    npc = data["npc"]
+    quest = data["quest"]
+    image_urls = data["images"]
 
-        with st.expander(f"Character #{i+1}: {char['Name']}"):
-            tabs = st.tabs(["Character", "NPC", "Quest", "Music"])
+    with st.expander(f"Character #{i+1}: {char['Name']}"):
+        tabs = st.tabs(["Character", "NPC", "Quest", "Music"])
 
-            with tabs[0]:
-                st.image(char["Image"], caption="Character Portrait")
-                st.markdown(f"**{char['Name']}** | {char['Race']} {char['Class']} | Background: {char['Background']}")
-                edited_history = st.text_area("Edit History", char["History"], key=f"history_{i}")
-                char["History"] = edited_history
+        with tabs[0]:
+            st.image(char["Image"], caption="Main Portrait")
+            st.markdown(f"**{char['Name']}** | {char['Race']} {char['Class']} | Background: {char['Background']}")
+            char["History"] = st.text_area("Edit History", char["History"], key=f"history_{i}")
+            for j, url in enumerate(image_urls[1:], start=1):
+                st.image(url, caption=f"Extra Image {j}")
 
-                if generate_turnaround:
-                    st.image(generate_character_image(char, selected_style), caption="Turnaround Image")
-                if generate_location:
-                    st.image(generate_character_image(char, selected_style), caption="Place of Origin")
-                if generate_extra:
-                    st.image(generate_character_image(char, selected_style), caption="Extra Image 1")
-                    st.image(generate_character_image(char, selected_style), caption="Extra Image 2")
+        with tabs[1]:
+            st.write(npc)
 
-            with tabs[1]:
-                st.write(npc)
+        with tabs[2]:
+            quest["description"] = st.text_area("Edit Quest Description", quest["description"], key=f"quest_{i}")
+            st.markdown(f"### {quest['title']}")
+            st.write(quest["description"])
 
-            with tabs[2]:
-                edited_quest = st.text_area("Edit Quest Description", quest["description"], key=f"quest_{i}")
-                quest["description"] = edited_quest
-                st.markdown(f"### {quest['title']}")
-                st.write(edited_quest)
+        with tabs[3]:
+            if generate_music:
+                prompt = f"Fantasy orchestral theme for a {char['Race']} {char['Class']} named {char['Name']} from a {char['Background']} background."
+                song_path = "output/theme_song.wav"
+                if os.path.exists(song_path):
+                    with open(song_path, "rb") as audio_file:
+                        st.audio(audio_file.read(), format="audio/wav")
+                else:
+                    st.warning("Theme song not found. Check Audiocraft setup.")
 
-            with tabs[3]:
-                if generate_music:
-                    prompt = f"Fantasy orchestral theme for a {char['Race']} {char['Class']} named {char['Name']} from a {char['Background']} background."
-                    song_path = generate_theme_song(prompt)
-                    if song_path and os.path.exists(song_path):
-                        with open(song_path, "rb") as audio_file:
-                            st.audio(audio_file.read(), format="audio/wav")
-                    else:
-                        st.warning("Failed to generate theme song. Check Audiocraft installation.")
+        if st.button(f"📄 Download PDF #{i+1}"):
+            pdf = create_pdf(char, npc, quest, image_urls)
+            st.download_button("Download PDF", pdf, file_name=f"{char['Name']}_profile.pdf", mime="application/pdf")
 
-            if st.button(f"📄 Download PDF #{i+1}"):
-                pdf = create_pdf(char, npc, quest)
-                st.download_button("Download PDF", pdf, file_name=f"{char['Name']}_profile.pdf", mime="application/pdf")
-
-            if st.button(f"💾 Save Data as JSON #{i+1}"):
-                save_to_json(char, npc, quest, file_name=f"{char['Name']}_data.json")
-                st.success("Data saved to JSON.")
+        if st.button(f"💾 Save Data as JSON #{i+1}"):
+            save_to_json(char, npc, quest, file_name=f"{char['Name']}_data.json")
+            st.success("Data saved to JSON.")
