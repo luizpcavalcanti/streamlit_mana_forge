@@ -107,7 +107,7 @@ def create_pdf(character, npc, quest, images):
     c = canvas.Canvas(buffer, pagesize=letter)
     x, y = 50, 750  # Starting position for text
     line_height = 12
-    max_width = 450
+    max_width = 500
     page_height = letter[1]
 
     def section(title, content):
@@ -144,8 +144,8 @@ def create_pdf(character, npc, quest, images):
             y = check_page_space(required_space)
 
             # Draw image with the larger size
-            c.drawImage(img, x, y 0, width=400, height=400, preserveAspectRatio=True)
-            y -= 750  # Adjust the y position after the image
+            c.drawImage(img, x, y - 250, width=400, height=400, preserveAspectRatio=True)
+            y -= 550  # Adjust the y position after the image
 
     c.showPage()
     c.save()
