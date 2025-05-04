@@ -16,6 +16,10 @@ openai.api_key = st.secrets["OPENAI_API_KEY"]
 # Initialize session state
 if "characters" not in st.session_state:
     st.session_state.characters = []
+if "parties" not in st.session_state:
+    st.session_state.parties = []
+if "npc_chains" not in st.session_state:
+    st.session_state.npc_chains = []
 
 # Character traits
 races = ["Human", "Elf", "Dwarf", "Halfling", "Gnome", "Half-Orc", "Tiefling", "Dragonborn", "Kobold", "Lizardfolk", "Minotaur", "Troll", "Vampire", "Satyr", "Undead", "Lich", "Werewolf"]
@@ -105,7 +109,7 @@ def create_pdf(character, npc, quest, images):
         c.setFont("Helvetica", 8)
         y = draw_wrapped_text(c, content, x, y, max_width, line_height)
         y -= line_height
-    section("Character Info", f"{character['Name']} ({character['Gender']}, {character['Race']} {character['Class']})")
+    section("Character Info", f"{character['Name']} ({character['Gender']}, {character['Race']}, {character['Class']})")
     section("Background", character['Background'])
     section("History", character.get('History', ''))
     section("NPC", f"{npc['name']} - {npc['role']}")
@@ -127,9 +131,9 @@ def save_to_json(character, npc, quest, file_name="character_data.json"):
 
 # --- Streamlit UI ---
 st.title("🎭 Mana Forge Character Generator & Toolkit")
-mode = st.sidebar.radio("Select Mode:", ["Character", "Quests", "NPCs"])
+mode = st.sidebar.radio("Select Mode:", ["Character", "Party", "NPC Chains", "Quests"])
 
-# Character Creation Tab
+# Character mode
 if mode == "Character":
     name = st.text_input("Enter character name:")
     selected_race = st.selectbox("Select race:", races)
@@ -167,9 +171,9 @@ if mode == "Character":
             st.session_state.characters.append({"character": char, "npc": npc, "quest": quest, "images": image_urls})
             st.success("Character Created!")
 
-    for data in st.session_state.characters:
+    for i, data in enumerate(st.session_state.characters):
         ch, npc, quest, imgs = data['character'], data['npc'], data['quest'], data['images']
-        tabs = st.tabs(["Info", "History", "NPC", "Quest", "Images", "Export"])
+        tabs = st.tabs(["Info", "History", "NPC", "Quests", "Images", "Export"])
         with tabs[0]:
             st.write(f"**{ch['Name']}** — {ch['Gender']}, {ch['Race']} {ch['Class']} ({ch['Background']})")
         with tabs[1]:
@@ -188,17 +192,19 @@ if mode == "Character":
             pdf_buf = create_pdf(ch, npc, quest, imgs)
             st.download_button("Download PDF", data=pdf_buf, file_name=f"{ch['Name']}.pdf", mime="application/pdf")
 
-# All Quests Tab
+# New Quests tab
 elif mode == "Quests":
     st.header("🗺️ All Generated Quests")
     if not st.session_state.characters:
         st.info("No quests generated yet. Create some characters first!")
     else:
-        for entry in st.session_state.characters:
+        for i, entry in enumerate(st.session_state.characters):
             ch = entry["character"]
             quest = entry["quest"]
-            st.subheader(f"{ch['Name']}'s Quest: {quest['title']}")
-            st.write(quest["description"])
+            st.subheader(f"{ch['Name']} — Quest: {quest['title']}")
+            st.write(quest['description'])
+
+# Party mode and NPC Chains mode would continue here...
 
 # Party mode
 elif mode == "Party":
@@ -229,17 +235,14 @@ elif mode == "Party":
                     c.drawString(50, 750, f"Party: {names}"); c.drawString(50, 730, party['story']); c.showPage(); c.save(); buf.seek(0)
                     st.download_button("Download Party PDF", data=buf, file_name=f"party_{idx+1}.pdf", mime="application/pdf")
 
-
-# All NPCs Tab
-elif mode == "NPCs":
-    st.header("👥 All Generated NPCs")
-    if not st.session_state.characters:
-        st.info("No NPCs generated yet. Create some characters first!")
-    else:
-        for entry in st.session_state.characters:
-            ch = entry["character"]
-            npc = entry["npc"]
-            st.subheader(f"{ch['Name']}'s NPC: {npc['name']} ({npc['role']})")
-            st.write(npc["backstory"])
-
-
+# NPC Chains mode
+else:
+    st.header("🔗 NPC Chains")
+    if st.button("Generate NPC Chain for All Characters"):
+        chain = {d['character']['Name']: {"NPC": d['npc'], "Quest": d['quest']} for d in st.session_state.characters}
+        st.session_state.npc_chains.append(chain)
+        st.success("NPC Chain Generated!")
+    for idx, chain in enumerate(st.session_state.npc_chains):
+        exp = st.expander(f"NPC Chain {idx+1}")
+        with exp:
+            st.json(chain)
