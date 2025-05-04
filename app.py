@@ -20,8 +20,6 @@ if "parties" not in st.session_state:
     st.session_state.parties = []
 if "npc_chains" not in st.session_state:
     st.session_state.npc_chains = []
-if "stories" not in st.session_state:
-    st.session_state.stories = []
 
 # Character traits
 races = ["Human", "Elf", "Dwarf", "Halfling", "Gnome", "Half-Orc", "Tiefling", "Dragonborn", "Kobold", "Lizardfolk", "Minotaur", "Troll", "Vampire", "Satyr", "Undead", "Lich", "Werewolf"]
