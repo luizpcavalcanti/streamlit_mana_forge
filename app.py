@@ -237,8 +237,8 @@ elif mode == "Party":
 
 # NPC Chains mode
 else:
-    st.header("🔗 NPC Chains")
-    if st.button("Generate NPC Chain for All Characters"):
+    st.header("🔗 Quest Net")
+    if st.button("Generate NPC + Quest Net for All Characters"):
         chain = {d['character']['Name']: {"NPC": d['npc'], "Quest": d['quest']} for d in st.session_state.characters}
         st.session_state.npc_chains.append(chain)
         st.success("NPC Chain Generated!")
