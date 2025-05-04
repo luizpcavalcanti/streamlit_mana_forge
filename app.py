@@ -172,7 +172,6 @@ auto_generate_class_and_background = st.checkbox("Auto-generate class & backgrou
 if auto_generate_class_and_background:
     character_class = random.choice(classes)
     background = random.choice(backgrounds)
-    st.write(f"Class: {character_class} | Background: {background}")
 else:
     character_class = st.selectbox("Select class:", classes)
     background = st.selectbox("Select background:", backgrounds)
@@ -191,6 +190,7 @@ if st.button("Generate Character"):
     if not name.strip():
         st.warning("Please enter a name.")
     else:
+        st.write(f"Class: {character_class} | Background: {background}")
         char = generate_character(name, selected_gender, selected_race, character_class, background)
         char["History"] = generate_character_history(char, generate_history)
         image_urls = [generate_character_image(char, selected_style)]
