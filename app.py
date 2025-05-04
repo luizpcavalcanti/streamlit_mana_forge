@@ -235,6 +235,36 @@ elif mode == "Party":
                     c.drawString(50, 750, f"Party: {names}"); c.drawString(50, 730, party['story']); c.showPage(); c.save(); buf.seek(0)
                     st.download_button("Download Party PDF", data=buf, file_name=f"party_{idx+1}.pdf", mime="application/pdf")
 
+elif mode == "Story Mode":
+    st.header("📖 Story Mode")
+    if not st.session_state.characters:
+        st.warning("No characters available. Please generate characters first.")
+    else:
+        selected_character = st.selectbox("Select Character", [f"{c['character']['Name']} ({i})" for i, c in enumerate(st.session_state.characters)])
+        index = int(selected_character.split("(")[-1].strip(")"))
+        char = st.session_state.characters[index]["character"]
+        npc = st.session_state.characters[index]["npc"]
+        quest = st.session_state.characters[index]["quest"]
+
+        if st.button("Generate Story Paragraph"):
+            prompt = f"Write a fantasy RPG story paragraph featuring {char['Name']} the {char['Race']} {char['Class']}, who is on a quest titled '{quest['title']}' and encounters the NPC {npc['name']} the {npc['role']}."
+            response = openai.ChatCompletion.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "system", "content": "You are a creative fantasy narrator."}, {"role": "user", "content": prompt}]
+            )
+            story = response["choices"][0]["message"]["content"]
+            story_entry = {"character": char["Name"], "quest": quest["title"], "npc": npc["name"], "story": story}
+            st.session_state.stories.append(story_entry)
+            st.success("Story generated!")
+
+    if st.session_state.stories:
+        st.subheader("Generated Stories")
+        for i, entry in enumerate(st.session_state.stories):
+            with st.expander(f"Story {i+1}: {entry['character']} - {entry['quest']}"):
+                st.markdown(entry['story'])
+        if st.download_button("Download Stories as JSON", json.dumps(st.session_state.stories, indent=2), file_name="stories.json"):
+            st.success("Stories downloaded!")
+
 # NPC Chains mode
 else:
     st.header("🔗 Quest Net")
@@ -246,73 +276,3 @@ else:
         exp = st.expander(f"NPC Chain {idx+1}")
         with exp:
             st.json(chain)
-
-
-if "stories" not in st.session_state:
-    st.session_state.stories = []
-
-# --- Story Mode Tab ---
-elif mode == "Story Mode":
-    st.header("📖 Story Mode: Narrative Generator")
-
-    if not st.session_state.characters:
-        st.info("No characters generated yet. Create characters first in the Character tab.")
-    else:
-        # Select quest, NPC, character or party
-        character_names = [c['character']['Name'] for c in st.session_state.characters]
-        selected_char_name = st.selectbox("Choose a character for the story:", character_names)
-        selected_char_data = next((c for c in st.session_state.characters if c['character']['Name'] == selected_char_name), None)
-
-        if selected_char_data:
-            ch = selected_char_data['character']
-            npc = selected_char_data['npc']
-            quest = selected_char_data['quest']
-
-            if st.button("Generate Story Paragraph"):
-                prompt = (
-                    f"Write a rich fantasy RPG story paragraph about a quest. The quest is titled '{quest['title']}' and involves "
-                    f"a character named {ch['Name']}, a {ch['Race']} {ch['Class']} ({ch['Background']}) and an NPC named {npc['name']} who is a {npc['role']}. "
-                    f"The character's backstory: {ch.get('History', 'No history.')}. The NPC's backstory: {npc['backstory']}. "
-                    f"The quest description: {quest['description']}. Write it as a vivid storyteller would narrate it."
-                )
-                response = openai.ChatCompletion.create(
-                    model="gpt-4o-mini",
-                    messages=[{"role": "system", "content": "You are a fantasy storyteller."}, {"role": "user", "content": prompt}]
-                )
-                story_text = response["choices"][0]["message"]["content"]
-                story_entry = {
-                    "character": ch,
-                    "npc": npc,
-                    "quest": quest,
-                    "story": story_text
-                }
-                st.session_state.stories.append(story_entry)
-                st.success("Story generated!")
-
-        # Display generated stories
-        if st.session_state.stories:
-            for i, entry in enumerate(st.session_state.stories):
-                with st.expander(f"Story #{i+1} - {entry['character']['Name']} and the '{entry['quest']['title']}'"):
-                    st.write(entry['story'])
-                    json_data = json.dumps(entry, indent=4)
-                    st.download_button(
-                        f"Download JSON for Story #{i+1}",
-                        data=json_data,
-                        file_name=f"story_{i+1}_{entry['character']['Name']}.json"
-                    )
-                    # Generate PDF
-                    pdf_buf = BytesIO()
-                    c = canvas.Canvas(pdf_buf, pagesize=letter)
-                    x, y = 50, 750
-                    c.setFont("Helvetica-Bold", 12)
-                    c.drawString(x, y, f"Story #{i+1}: {entry['character']['Name']} and the Quest '{entry['quest']['title']}'")
-                    y -= 20
-                    c.setFont("Helvetica", 10)
-                    y = draw_wrapped_text(c, entry['story'], x, y, 500, 14)
-                    c.showPage(); c.save(); pdf_buf.seek(0)
-                    st.download_button(
-                        f"Download PDF for Story #{i+1}",
-                        data=pdf_buf,
-                        file_name=f"story_{i+1}_{entry['character']['Name']}.pdf",
-                        mime="application/pdf"
-                    )
