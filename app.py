@@ -28,7 +28,7 @@ backgrounds = ["Acolyte", "Folk Hero", "Sage", "Criminal", "Noble", "Hermit", "O
 genders = ["Male", "Female", "Non-binary"]
 image_styles = ["Standard", "8bit Style", "Anime Style"]
 
-# Generation functions (unchanged)
+# Generation functions
 def generate_character(name, gender, race, character_class, background):
     return {"Name": name, "Gender": gender, "Race": race, "Class": character_class, "Background": background}
 
@@ -109,7 +109,6 @@ def create_pdf(character, npc, quest, images):
         c.setFont("Helvetica", 8)
         y = draw_wrapped_text(c, content, x, y, max_width, line_height)
         y -= line_height
-    # sections
     section("Character Info", f"{character['Name']} ({character['Gender']}, {character['Race']}, {character['Class']})")
     section("Background", character['Background'])
     section("History", character.get('History', ''))
@@ -117,7 +116,6 @@ def create_pdf(character, npc, quest, images):
     section("NPC Backstory", npc['backstory'])
     section("Quest", quest['title'])
     section("Quest Description", quest['description'])
-    # images
     for url in images:
         img = download_image(url)
         if img:
@@ -133,11 +131,10 @@ def save_to_json(character, npc, quest, file_name="character_data.json"):
 
 # --- Streamlit UI ---
 st.title("🎭 Mana Forge Character Generator & Toolkit")
-mode = st.sidebar.radio("Select Mode:", ["Character", "Party", "NPC Chains"])
+mode = st.sidebar.radio("Select Mode:", ["Character", "Party", "NPC Chains", "Quests"])
 
 # Character mode
 if mode == "Character":
-    # Original UI inputs
     name = st.text_input("Enter character name:")
     selected_race = st.selectbox("Select race:", races)
     selected_gender = st.selectbox("Select gender:", genders)
@@ -158,12 +155,11 @@ if mode == "Character":
     generate_npc_text = st.checkbox("Generate NPC Text")
     generate_quest_text = st.checkbox("Generate Quest Text")
     if st.button("Generate Character"):
-        if not name.strip(): st.warning("Please enter a name.")
+        if not name.strip():
+            st.warning("Please enter a name.")
         else:
-            # generate
             char = generate_character(name, selected_gender, selected_race, character_class, background)
             char["History"] = generate_character_history(char, generate_history)
-            # images
             image_urls = [generate_character_image(char, selected_style)]
             if generate_turnaround: image_urls.append(generate_character_image(char, selected_style))
             if generate_location: image_urls.append(generate_character_image(char, selected_style))
@@ -174,7 +170,7 @@ if mode == "Character":
             quest = generate_quest(generate_quest_text)
             st.session_state.characters.append({"character": char, "npc": npc, "quest": quest, "images": image_urls})
             st.success("Character Created!")
-    # display
+
     for i, data in enumerate(st.session_state.characters):
         ch, npc, quest, imgs = data['character'], data['npc'], data['quest'], data['images']
         tabs = st.tabs(["Info", "History", "NPC", "Quests", "Images", "Export"])
@@ -189,11 +185,26 @@ if mode == "Character":
             st.write(f"**{quest['title']}**")
             st.write(quest['description'])
         with tabs[4]:
-            for url in imgs: st.image(url, use_container_width=True)
+            for url in imgs:
+                st.image(url, use_container_width=True)
         with tabs[5]:
             st.download_button("Download JSON", data=json.dumps({"character": ch, "npc": npc, "quest": quest}), file_name=f"{ch['Name']}.json")
             pdf_buf = create_pdf(ch, npc, quest, imgs)
             st.download_button("Download PDF", data=pdf_buf, file_name=f"{ch['Name']}.pdf", mime="application/pdf")
+
+# New Quests tab
+elif mode == "Quests":
+    st.header("🗺️ All Generated Quests")
+    if not st.session_state.characters:
+        st.info("No quests generated yet. Create some characters first!")
+    else:
+        for i, entry in enumerate(st.session_state.characters):
+            ch = entry["character"]
+            quest = entry["quest"]
+            st.subheader(f"{ch['Name']} — Quest: {quest['title']}")
+            st.write(quest['description'])
+
+# Party mode and NPC Chains mode would continue here...
 
 # Party mode
 elif mode == "Party":
