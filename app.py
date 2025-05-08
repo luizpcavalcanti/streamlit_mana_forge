@@ -9,10 +9,21 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.utils import simpleSplit, ImageReader
 import base64
 import requests
+from streamlit_gsheets import GSheetsConnection
+
 
 # Load OpenAI key securely
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
+
+# Create a connection object.
+conn = st.connection("gsheets", type=GSheetsConnection)
+    
+df = conn.read()
+
+# Print results.
+for row in df.itertuples():
+    st.write(f"{row.name} has a :{row.pet}:")
 
 # Initialize session state
 if "characters" not in st.session_state:
@@ -66,7 +77,26 @@ def generate_character_image(character, style="Standard"):
     if style == "Anime Style": base_prompt += " anime art style, cel-shaded, colorful background"
     response = openai.Image.create(model="dall-e-3", prompt=base_prompt, size="1024x1024")
     return response["data"][0]["url"]
-
+    
+def save_character_to_sheet(character, npc, quest, image_urls):
+    # Prepare the data row
+    row = [
+        character['Name'],
+        character['Gender'],
+        character['Race'],
+        character['Class'],
+        character['Background'],
+        character.get('History', ''),
+        npc['name'],
+        npc['role'],
+        npc['backstory'],
+        quest['title'],
+        quest['description'],
+        ', '.join(image_urls)  # Join image URLs into a single string
+    ]
+    # Append the row to the worksheet
+    worksheet.append_row(row)
+    
 def generate_npc(generate_npc_text=True):
     if generate_npc_text:
         prompt = "Generate a unique fantasy NPC name and their profession."
