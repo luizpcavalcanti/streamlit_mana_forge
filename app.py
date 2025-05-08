@@ -9,10 +9,12 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.utils import simpleSplit, ImageReader
 import base64
 import requests
+from streamlit_gsheets import GSheetsConnection
 
 # Load OpenAI key securely
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
+conn = st.experimental_connection("gsheets", type=GSheetsConnection)
 
 # Initialize session state
 if "characters" not in st.session_state:
@@ -142,6 +144,32 @@ def create_pdf(character, npc, quest, images):
             y -= 420
     c.showPage(); c.save(); buffer.seek(0)
     return buffer
+    
+def save_character_to_gsheet(character, npc, quest, images):
+    # Prepare data dictionary
+    data = {
+        "Name": character["Name"],
+        "Gender": character["Gender"],
+        "Race": character["Race"],
+        "Class": character["Class"],
+        "Background": character["Background"],
+        "History": character.get("History", ""),
+        "NPC Name": npc["name"],
+        "NPC Role": npc["role"],
+        "NPC Backstory": npc["backstory"],
+        "Quest Title": quest["title"],
+        "Quest Description": quest["description"],
+        "Image URLs": ", ".join(images)
+    }
+
+    # Read existing data
+    existing_data = conn.read(worksheet="Sheet1", usecols=list(data.keys()), ttl=0)
+
+    # Append new data
+    updated_data = existing_data.append(data, ignore_index=True)
+
+    # Write back to Google Sheets
+    conn.update(worksheet="Sheet1", data=updated_data)
 
 def save_to_json(character, npc, quest, file_name="character_data.json"):
     with open(file_name, 'w') as f:
@@ -188,6 +216,7 @@ if mode == "Character":
             npc = generate_npc(generate_npc_text)
             quest = generate_quest(generate_quest_text)
             st.session_state.characters.append({"character": char, "npc": npc, "quest": quest, "images": image_urls})
+            save_character_to_gsheet(char, npc, quest, image_urls)
             st.success("Character Created!")
 
     for i, data in enumerate(st.session_state.characters):
