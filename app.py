@@ -47,7 +47,6 @@ def generate_character_history(character, generate_history=True):
         return response["choices"][0]["message"]["content"]
     return ""
 
-
 # World Builder Functions
 def initialize_world(world_name):
     world = {"name": world_name, "regions": {}}
@@ -79,6 +78,7 @@ def generate_world_journal(world):
             entry += "Quests:\n" + "\n".join([f"- {quest['title']} - Last Update: {quest.get('last_action', 'Unknown')}" for quest in region["quests"]]) + "\n"
         journal_entries.append(entry)
     return "\n\n".join(journal_entries)
+
 
 
 def generate_story(character, npc, quest):
@@ -187,9 +187,6 @@ def save_to_json(character, npc, quest, file_name="character_data.json"):
 st.title("🎭 Mana Forge Character Generator & Toolkit")
 mode = st.sidebar.radio("Select Mode:", ["World Builder", "Character", "Party", "NPC Chains", "Quests", "Story Mode", "Lore Mode", "Map Overview"])
 
-
-# World mode
-
 if mode == "World Builder":
     tab1, tab2 = st.tabs(["Regions", "Stories"])
     with tab1:
@@ -227,6 +224,7 @@ elif mode == "Lore Mode":
     st.text_area("Write Your Lore Here:")
     if st.button("Save Lore"):
         st.success("Lore Saved!")
+
 
 # Character mode
 if mode == "Character":
