@@ -362,13 +362,34 @@ if mode == "World Builder":
                         if region["special_traits"]:
                             cols[j].write("🌟 Special Traits:")
                             for trait in region["special_traits"]:
-                                cols[j].write(f"- {trait}")
+                                    cols[j].write(f"- {trait}")
     with tab2:
-        if st.session_state.worlds:
-            for world in st.session_state.worlds:
-                st.subheader(f"📖 Journal for '{world['name']}'")
-                journal = generate_world_journal(world)
-                st.text_area("World Journal", value=journal, height=400)
+        st.header("📝 World Stories")
+        if not st.session_state.stories:
+            st.info("No stories created yet. Use the **Story Mode** to generate and save some epic tales!")
+        else:
+            for idx, story in enumerate(st.session_state.stories):
+                with st.expander(f"Story {idx+1}: {story['character']['Name']} - {story['quest']['title']}"):
+                    st.markdown(f"**Character**: {story['character']['Name']} ({story['character']['Class']})")
+                    st.markdown(f"**NPC**: {story['npc']['name']} - {story['npc']['role']}")
+                    st.markdown(f"**Quest**: {story['quest']['title']}")
+                    st.text_area("Story Text", value=story['story'], height=200)
+                    
+                    # Download JSON
+                    story_json = json.dumps(story, indent=4)
+                    st.download_button("Download JSON", story_json, file_name=f"story_{idx+1}.json")
+    
+                    # PDF export for story
+                    pdf_buf = BytesIO()
+                    c = canvas.Canvas(pdf_buf, pagesize=letter)
+                    c.setFont("Helvetica-Bold", 12)
+                    c.drawString(50, 750, f"Story {idx+1}: {story['character']['Name']} - {story['quest']['title']}")
+                    c.setFont("Helvetica", 10)
+                    y = draw_wrapped_text(c, story['story'], 50, 730, 500, 14)
+                    c.save()
+                    pdf_buf.seek(0)
+                    st.download_button("Download PDF", data=pdf_buf, file_name=f"story_{idx+1}.pdf", mime="application/pdf")
+
 
 elif mode == "Lore Mode":
     st.subheader("📜 Lore Creation")
