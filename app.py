@@ -376,16 +376,3 @@ elif mode == "Lore Mode":
     st.text_area("Write Your Lore Here:")
     if st.button("Save Lore"):
         st.success("Lore Saved!")
-
-
-# NPC Chains mode
-else:
-    st.header("🔗 Quest Net")
-    if st.button("Generate NPC + Quest Net for All Characters"):
-        chain = {d['character']['Name']: {"NPC": d['npc'], "Quest": d['quest']} for d in st.session_state.characters}
-        st.session_state.npc_chains.append(chain)
-        st.success("NPC Chain Generated!")
-    for idx, chain in enumerate(st.session_state.npc_chains):
-        exp = st.expander(f"NPC Chain {idx+1}")
-        with exp:
-            st.json(chain)
