@@ -185,7 +185,7 @@ def save_to_json(character, npc, quest, file_name="character_data.json"):
 
 # --- MAIN UI ---
 st.title("🎭 Mana Forge Character Generator & Toolkit")
-mode = st.sidebar.radio("Select Mode:", ["World Builder", "Character", "Party", "NPC Chains", "Quests", "Story Mode", "Lore Mode", "Map Overview"])
+mode = st.sidebar.radio("Select Mode:", [ "Character", "Party", "NPC Chains", "Quests", "Story Mode","World Builder"])
 
 if mode == "World Builder":
     tab1, tab2 = st.tabs(["Regions", "Stories"])
