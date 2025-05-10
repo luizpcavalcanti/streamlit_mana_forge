@@ -23,7 +23,8 @@ if "npc_chains" not in st.session_state:
     st.session_state.npc_chains = []
 if "stories" not in st.session_state:
     st.session_state.stories = []
-
+if "worlds" not in st.session_state:
+    st.session_state.worlds = []
 
 # Character traits
 races = ["Human", "Elf", "Dwarf", "Halfling", "Gnome", "Half-Orc", "Tiefling", "Dragonborn", "Kobold", "Lizardfolk", "Minotaur", "Troll", "Vampire", "Satyr", "Undead", "Lich", "Werewolf"]
@@ -45,6 +46,40 @@ def generate_character_history(character, generate_history=True):
         )
         return response["choices"][0]["message"]["content"]
     return ""
+
+
+# World Builder Functions
+def initialize_world(world_name):
+    world = {"name": world_name, "regions": {}}
+    for i in range(5):
+        for j in range(5):
+            world["regions"][f"{i+1}-{j+1}"] = {"name": f"Location {i+1}-{j+1}", "characters": [], "npcs": [], "quests": [], "capital": False, "special_traits": []}
+    st.session_state.worlds.append(world)
+    return world
+
+def add_to_region(world_name, region_key, entry_type, entry):
+    for world in st.session_state.worlds:
+        if world["name"] == world_name:
+            world["regions"][region_key][entry_type].append(entry)
+
+
+def generate_world_journal(world):
+    journal_entries = []
+    for region_key, region in world["regions"].items():
+        entry = f"**{region['name']}**\n"
+        if region["capital"]:
+            entry += "Capital Region\n"
+        if region["special_traits"]:
+            entry += "Special Traits:\n" + "\n".join([f"- {trait}" for trait in region["special_traits"]]) + "\n"
+        if region["characters"]:
+            entry += "Characters:\n" + "\n".join([f"- {c['Name']} ({c['Race']} {c['Class']}) - Last Seen: {c.get('last_action', 'Unknown')}" for c in region["characters"]]) + "\n"
+        if region["npcs"]:
+            entry += "NPCs:\n" + "\n".join([f"- {npc['name']} ({npc['role']}) - Last Seen: {npc.get('last_action', 'Unknown')}" for npc in region["npcs"]]) + "\n"
+        if region["quests"]:
+            entry += "Quests:\n" + "\n".join([f"- {quest['title']} - Last Update: {quest.get('last_action', 'Unknown')}" for quest in region["quests"]]) + "\n"
+        journal_entries.append(entry)
+    return "\n\n".join(journal_entries)
+
 
 def generate_story(character, npc, quest):
     prompt = (
@@ -150,7 +185,48 @@ def save_to_json(character, npc, quest, file_name="character_data.json"):
 
 # --- MAIN UI ---
 st.title("🎭 Mana Forge Character Generator & Toolkit")
-mode = st.sidebar.radio("Select Mode:", ["Character", "Party", "NPC Chains", "Quests", "Story Mode"])
+mode = st.sidebar.radio("Select Mode:", ["World Builder", "Character", "Party", "NPC Chains", "Quests", "Story Mode", "Lore Mode", "Map Overview"])
+
+
+# World mode
+
+if mode == "World Builder":
+    tab1, tab2 = st.tabs(["Regions", "Stories"])
+    with tab1:
+        world_name = st.text_input("Enter World Name:")
+        if st.button("Create World") and world_name.strip():
+            world = initialize_world(world_name)
+            st.success(f"World '{world_name}' Created!")
+        if st.session_state.worlds:
+            for world in st.session_state.worlds:
+                st.subheader(f"🌍 {world['name']}")
+                for i in range(5):
+                    cols = st.columns(5)
+                    for j in range(5):
+                        loc_key = f"{i+1}-{j+1}"
+                        region = world["regions"][loc_key]
+                        cols[j].write(f"**{region['name']}**")
+                        if region["characters"] or region["npcs"] or region["quests"]:
+                            cols[j].write(f"{len(region['characters'])} Characters, {len(region['npcs'])} NPCs, {len(region['quests'])} Quests")
+                        if region["capital"]:
+                            cols[j].write("🏰 Capital Region")
+                        if region["special_traits"]:
+                            cols[j].write("🌟 Special Traits:")
+                            for trait in region["special_traits"]:
+                                cols[j].write(f"- {trait}")
+    with tab2:
+        if st.session_state.worlds:
+            for world in st.session_state.worlds:
+                st.subheader(f"📖 Journal for '{world['name']}'")
+                journal = generate_world_journal(world)
+                st.text_area("World Journal", value=journal, height=400)
+
+elif mode == "Lore Mode":
+    st.subheader("📜 Lore Creation")
+    st.text_input("Enter Lore Title:")
+    st.text_area("Write Your Lore Here:")
+    if st.button("Save Lore"):
+        st.success("Lore Saved!")
 
 # Character mode
 if mode == "Character":
