@@ -187,44 +187,6 @@ def save_to_json(character, npc, quest, file_name="character_data.json"):
 st.title("🎭 Mana Forge Character Generator & Toolkit")
 mode = st.sidebar.radio("Select Mode:", [ "Character", "Party", "NPC Chains", "Quests", "Story Mode","World Builder"])
 
-if mode == "World Builder":
-    tab1, tab2 = st.tabs(["Regions", "Stories"])
-    with tab1:
-        world_name = st.text_input("Enter World Name:")
-        if st.button("Create World") and world_name.strip():
-            world = initialize_world(world_name)
-            st.success(f"World '{world_name}' Created!")
-        if st.session_state.worlds:
-            for world in st.session_state.worlds:
-                st.subheader(f"🌍 {world['name']}")
-                for i in range(5):
-                    cols = st.columns(5)
-                    for j in range(5):
-                        loc_key = f"{i+1}-{j+1}"
-                        region = world["regions"][loc_key]
-                        cols[j].write(f"**{region['name']}**")
-                        if region["characters"] or region["npcs"] or region["quests"]:
-                            cols[j].write(f"{len(region['characters'])} Characters, {len(region['npcs'])} NPCs, {len(region['quests'])} Quests")
-                        if region["capital"]:
-                            cols[j].write("🏰 Capital Region")
-                        if region["special_traits"]:
-                            cols[j].write("🌟 Special Traits:")
-                            for trait in region["special_traits"]:
-                                cols[j].write(f"- {trait}")
-    with tab2:
-        if st.session_state.worlds:
-            for world in st.session_state.worlds:
-                st.subheader(f"📖 Journal for '{world['name']}'")
-                journal = generate_world_journal(world)
-                st.text_area("World Journal", value=journal, height=400)
-
-elif mode == "Lore Mode":
-    st.subheader("📜 Lore Creation")
-    st.text_input("Enter Lore Title:")
-    st.text_area("Write Your Lore Here:")
-    if st.button("Save Lore"):
-        st.success("Lore Saved!")
-
 
 # Character mode
 if mode == "Character":
@@ -376,6 +338,44 @@ elif mode == "Story Mode":
                 c.save()
                 pdf_buf.seek(0)
                 st.download_button("Download PDF", data=pdf_buf, file_name=f"story_{idx+1}.pdf", mime="application/pdf")
+
+if mode == "World Builder":
+    tab1, tab2 = st.tabs(["Regions", "Stories"])
+    with tab1:
+        world_name = st.text_input("Enter World Name:")
+        if st.button("Create World") and world_name.strip():
+            world = initialize_world(world_name)
+            st.success(f"World '{world_name}' Created!")
+        if st.session_state.worlds:
+            for world in st.session_state.worlds:
+                st.subheader(f"🌍 {world['name']}")
+                for i in range(5):
+                    cols = st.columns(5)
+                    for j in range(5):
+                        loc_key = f"{i+1}-{j+1}"
+                        region = world["regions"][loc_key]
+                        cols[j].write(f"**{region['name']}**")
+                        if region["characters"] or region["npcs"] or region["quests"]:
+                            cols[j].write(f"{len(region['characters'])} Characters, {len(region['npcs'])} NPCs, {len(region['quests'])} Quests")
+                        if region["capital"]:
+                            cols[j].write("🏰 Capital Region")
+                        if region["special_traits"]:
+                            cols[j].write("🌟 Special Traits:")
+                            for trait in region["special_traits"]:
+                                cols[j].write(f"- {trait}")
+    with tab2:
+        if st.session_state.worlds:
+            for world in st.session_state.worlds:
+                st.subheader(f"📖 Journal for '{world['name']}'")
+                journal = generate_world_journal(world)
+                st.text_area("World Journal", value=journal, height=400)
+
+elif mode == "Lore Mode":
+    st.subheader("📜 Lore Creation")
+    st.text_input("Enter Lore Title:")
+    st.text_area("Write Your Lore Here:")
+    if st.button("Save Lore"):
+        st.success("Lore Saved!")
 
 
 # NPC Chains mode
