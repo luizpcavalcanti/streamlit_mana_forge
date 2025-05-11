@@ -62,61 +62,21 @@ def add_to_region(world_name, region_key, entry_type, entry):
             world["regions"][region_key][entry_type].append(entry)
 
 
-def save_journal(world_name, journal_text):
-    filename = f"journal_{world_name}.txt"
-    with open(filename, "w", encoding="utf-8") as file:
-        file.write(journal_text)
-
-def load_journal(world_name):
-    filename = f"journal_{world_name}.txt"
-    if os.path.exists(filename):
-        with open(filename, "r", encoding="utf-8") as file:
-            return file.read()
-    return ""
-
 def generate_world_journal(world):
     journal_entries = []
     for region_key, region in world["regions"].items():
         entry = f"**{region['name']}**\n"
-        
-        # Include capital city info
         if region["capital"]:
             entry += "Capital Region\n"
-        
-        # Add special traits or lore to the region
         if region["special_traits"]:
             entry += "Special Traits:\n" + "\n".join([f"- {trait}" for trait in region["special_traits"]]) + "\n"
-        
-        # Add characters info
         if region["characters"]:
             entry += "Characters:\n" + "\n".join([f"- {c['Name']} ({c['Race']} {c['Class']}) - Last Seen: {c.get('last_action', 'Unknown')}" for c in region["characters"]]) + "\n"
-        
-        # Add NPC info
         if region["npcs"]:
             entry += "NPCs:\n" + "\n".join([f"- {npc['name']} ({npc['role']}) - Last Seen: {npc.get('last_action', 'Unknown')}" for npc in region["npcs"]]) + "\n"
-        
-        # Add quests info
         if region["quests"]:
             entry += "Quests:\n" + "\n".join([f"- {quest['title']} - Last Update: {quest.get('last_action', 'Unknown')}" for quest in region["quests"]]) + "\n"
-        
-        # Use AI to generate regional content based on stories, characters, and quests
-        if region["characters"] or region["quests"]:
-            prompt = f"Generate a fantasy description of the region '{region['name']}' using the following elements:\n"
-            prompt += "Characters:\n" + "\n".join([f"- {c['Name']} ({c['Race']} {c['Class']})" for c in region["characters"]]) + "\n" if region["characters"] else ""
-            prompt += "NPCs:\n" + "\n".join([f"- {npc['name']} ({npc['role']})" for npc in region["npcs"]]) + "\n" if region["npcs"] else ""
-            prompt += "Quests:\n" + "\n".join([f"- {quest['title']}: {quest['description']}" for quest in region["quests"]]) + "\n" if region["quests"] else ""
-            prompt += f"Generate a rich, detailed story or lore for this region based on these elements, adding mystery, drama, or historical context.\n"
-            
-            # Get a response from the AI to enrich the region with lore and details
-            response = openai.ChatCompletion.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "system", "content": "You are a fantasy world-building assistant."},
-                          {"role": "user", "content": prompt}]
-            )
-            entry += f"Lore/Story:\n{response['choices'][0]['message']['content']}\n"
-        
         journal_entries.append(entry)
-    
     return "\n\n".join(journal_entries)
 
 
@@ -401,29 +361,24 @@ if mode == "World Builder":
             else:
                 for idx, world in enumerate(st.session_state.worlds):
                     st.subheader(f"📜 Journals for {world['name']}")
-                    # Load previous journal
-                    previous_journal = load_journal(world['name'])
-                    current_journal = generate_world_journal(world)
-        
-                    # Combine with previous journal if it exists
-                    full_journal = f"{previous_journal}\n\n{current_journal}".strip()
-                    st.text_area(f"Journal Text - {world['name']}", value=full_journal, height=300, key=f"journal_text_{idx}")
-        
+                    journal_text = generate_world_journal(world)
+                    st.text_area(f"Journal Text - {world['name']}", value=journal_text, height=300, key=f"journal_text_{idx}")
                     if st.button(f"Save Journal for {world['name']}", key=f"save_journal_{idx}"):
-                        save_journal(world['name'], full_journal)
+                        # Append new entries to the existing journal
+                        previous_journal = load_journal(world['name'])
+                        updated_journal = f"{previous_journal}\n\n{journal_text}" if previous_journal else journal_text
+                        save_journal(world['name'], updated_journal)
                         st.success(f"Journal saved for {world['name']}!")
-        
                         # Generate PDF for the updated journal
                         pdf_buf = BytesIO()
                         c = canvas.Canvas(pdf_buf, pagesize=letter)
                         c.setFont("Helvetica-Bold", 14)
                         c.drawString(50, 750, f"Journal for {world['name']}")
                         c.setFont("Helvetica", 10)
-                        draw_wrapped_text(c, full_journal, 50, 730, 500, 14)
+                        draw_wrapped_text(c, updated_journal, 50, 730, 500, 14)
                         c.save()
                         pdf_buf.seek(0)
                         st.download_button("Download Journal as PDF", data=pdf_buf, file_name=f"journal_{world['name']}.pdf", mime="application/pdf", key=f"download_journal_{idx}")
-
         with subtab2:
             st.header("📝 World Stories")
             if not st.session_state.stories:
@@ -448,4 +403,3 @@ if mode == "World Builder":
                         c.save()
                         pdf_buf.seek(0)
                         st.download_button("Download PDF", data=pdf_buf, file_name=f"story_{idx+1}.pdf", mime="application/pdf", key=f"download_pdf_{idx}")
-
