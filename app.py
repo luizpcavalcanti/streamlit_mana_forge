@@ -288,58 +288,9 @@ elif mode == "Party":
                     buf = BytesIO(); c = canvas.Canvas(buf, pagesize=letter)
                     c.drawString(50, 750, f"Party: {names}"); c.drawString(50, 730, party['story']); c.showPage(); c.save(); buf.seek(0)
                     st.download_button("Download Party PDF", data=buf, file_name=f"party_{idx+1}.pdf", mime="application/pdf")
-
-
-# --- STORY MODE TAB ---
-elif mode == "Story Mode":
-    st.header("📜 Story Mode")
-
-    if not st.session_state.characters:
-        st.warning("Please generate characters first in the Character tab.")
-    else:
-        character_names = [c['character']['Name'] for c in st.session_state.characters]
-        selected_char_index = st.selectbox("Select Character:", range(len(character_names)), format_func=lambda i: character_names[i])
-        selected_character_data = st.session_state.characters[selected_char_index]
-
-        selected_character = selected_character_data['character']
-        selected_npc = selected_character_data['npc']
-        selected_quest = selected_character_data['quest']
-
-        if st.button("Generate Story"):
-            story_text = generate_story(selected_character, selected_npc, selected_quest)
-            st.session_state.stories.append({
-                "character": selected_character,
-                "npc": selected_npc,
-                "quest": selected_quest,
-                "story": story_text
-            })
-            st.success("Story generated!")
-
-    if st.session_state.stories:
-        st.subheader("Generated Stories")
-        for idx, entry in enumerate(st.session_state.stories):
-            with st.expander(f"Story {idx+1}: {entry['character']['Name']} - {entry['quest']['title']}"):
-                st.markdown(f"**Character**: {entry['character']['Name']} ({entry['character']['Class']})")
-                st.markdown(f"**NPC**: {entry['npc']['name']} - {entry['npc']['role']}")
-                st.markdown(f"**Quest**: {entry['quest']['title']}")
-                st.text_area("Story Text", value=entry['story'], height=200)
-                
-                story_json = json.dumps(entry, indent=4)
-                st.download_button("Download JSON", story_json, file_name=f"story_{idx+1}.json")
-
-                # PDF export for story
-                pdf_buf = BytesIO()
-                c = canvas.Canvas(pdf_buf, pagesize=letter)
-                c.setFont("Helvetica-Bold", 12)
-                c.drawString(50, 750, f"Story {idx+1}: {entry['character']['Name']} - {entry['quest']['title']}")
-                c.setFont("Helvetica", 10)
-                y = draw_wrapped_text(c, entry['story'], 50, 730, 500, 14)
-                c.save()
-                pdf_buf.seek(0)
-                st.download_button("Download PDF", data=pdf_buf, file_name=f"story_{idx+1}.pdf", mime="application/pdf")
-
+                    
 if mode == "World Builder":
-    tab1, tab2 = st.tabs(["Regions", "Stories"])
+    tab1, tab2 = st.tabs(["Regions", "Journals"])
     with tab1:
         world_name = st.text_input("Enter Region Name:")
         if st.button("Create Region") and world_name.strip():
@@ -361,38 +312,61 @@ if mode == "World Builder":
                         if region["special_traits"]:
                             cols[j].write("🌟 Special Traits:")
                             for trait in region["special_traits"]:
-                                    cols[j].write(f"- {trait}")
+                                cols[j].write(f"- {trait}")
     with tab2:
-        st.header("📝 World Stories")
-        if not st.session_state.stories:
-            st.info("No stories created yet. Use the **Story Mode** to generate and save some epic tales!")
-        else:
-            for idx, story in enumerate(st.session_state.stories):
-                with st.expander(f"Story {idx+1}: {story['character']['Name']} - {story['quest']['title']}"):
-                    st.markdown(f"**Character**: {story['character']['Name']} ({story['character']['Class']})")
-                    st.markdown(f"**NPC**: {story['npc']['name']} - {story['npc']['role']}")
-                    st.markdown(f"**Quest**: {story['quest']['title']}")
-                    st.text_area("Story Text", value=story['story'], height=200)
+        subtab1, subtab2 = st.tabs(["Journals", "Stories"])
+        
+        with subtab1:
+            st.header("📝 World Journals")
+            if not st.session_state.journals:
+                st.info("No journals created yet. Use the **Story Mode** to generate and save some epic journal entries!")
+            else:
+                for idx, journal in enumerate(st.session_state.journals):
+                    with st.expander(f"Journal {idx+1}: {journal['character']['Name']} - {journal['quest']['title']}"):
+                        st.markdown(f"**Character**: {journal['character']['Name']} ({journal['character']['Class']})")
+                        st.markdown(f"**NPC**: {journal['npc']['name']} - {journal['npc']['role']}")
+                        st.markdown(f"**Quest**: {journal['quest']['title']}")
+                        st.text_area("Journal Entry", value=journal['story'], height=200)
+                        
+                        # Download JSON
+                        journal_json = json.dumps(journal, indent=4)
+                        st.download_button("Download JSON", journal_json, file_name=f"journal_{idx+1}.json")
                     
-                    # Download JSON
-                    story_json = json.dumps(story, indent=4)
-                    st.download_button("Download JSON", story_json, file_name=f"story_{idx+1}.json")
-    
-                    # PDF export for story
-                    pdf_buf = BytesIO()
-                    c = canvas.Canvas(pdf_buf, pagesize=letter)
-                    c.setFont("Helvetica-Bold", 12)
-                    c.drawString(50, 750, f"Story {idx+1}: {story['character']['Name']} - {story['quest']['title']}")
-                    c.setFont("Helvetica", 10)
-                    y = draw_wrapped_text(c, story['story'], 50, 730, 500, 14)
-                    c.save()
-                    pdf_buf.seek(0)
-                    st.download_button("Download PDF", data=pdf_buf, file_name=f"story_{idx+1}.pdf", mime="application/pdf")
+                        # PDF export for journal
+                        pdf_buf = BytesIO()
+                        c = canvas.Canvas(pdf_buf, pagesize=letter)
+                        c.setFont("Helvetica-Bold", 12)
+                        c.drawString(50, 750, f"Journal {idx+1}: {journal['character']['Name']} - {journal['quest']['title']}")
+                        c.setFont("Helvetica", 10)
+                        y = draw_wrapped_text(c, journal['story'], 50, 730, 500, 14)
+                        c.save()
+                        pdf_buf.seek(0)
+                        st.download_button("Download PDF", data=pdf_buf, file_name=f"journal_{idx+1}.pdf", mime="application/pdf")
+        
+        with subtab2:
+            st.header("📖 World Stories")
+            if not st.session_state.stories:
+                st.info("No stories created yet. Use the **Story Mode** to generate and save some epic tales!")
+            else:
+                for idx, story in enumerate(st.session_state.stories):
+                    with st.expander(f"Story {idx+1}: {story['character']['Name']} - {story['quest']['title']}"):
+                        st.markdown(f"**Character**: {story['character']['Name']} ({story['character']['Class']})")
+                        st.markdown(f"**NPC**: {story['npc']['name']} - {story['npc']['role']}")
+                        st.markdown(f"**Quest**: {story['quest']['title']}")
+                        st.text_area("Story Text", value=story['story'], height=200)
+                        
+                        # Download JSON
+                        story_json = json.dumps(story, indent=4)
+                        st.download_button("Download JSON", story_json, file_name=f"story_{idx+1}.json")
+                    
+                        # PDF export for story
+                        pdf_buf = BytesIO()
+                        c = canvas.Canvas(pdf_buf, pagesize=letter)
+                        c.setFont("Helvetica-Bold", 12)
+                        c.drawString(50, 750, f"Story {idx+1}: {story['character']['Name']} - {story['quest']['title']}")
+                        c.setFont("Helvetica", 10)
+                        y = draw_wrapped_text(c, story['story'], 50, 730, 500, 14)
+                        c.save()
+                        pdf_buf.seek(0)
+                        st.download_button("Download PDF", data=pdf_buf, file_name=f"story_{idx+1}.pdf", mime="application/pdf")
 
-
-elif mode == "Lore Mode":
-    st.subheader("📜 Lore Creation")
-    st.text_input("Enter Lore Title:")
-    st.text_area("Write Your Lore Here:")
-    if st.button("Save Lore"):
-        st.success("Lore Saved!")
