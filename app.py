@@ -23,7 +23,9 @@ if "stories" not in st.session_state:
     st.session_state.stories = []
 if "worlds" not in st.session_state:
     st.session_state.worlds = []
-
+if "journals" not in st.session_state:
+    st.session_state.journals = []
+    
 # Character traits
 races = ["Human", "Elf", "Dwarf", "Halfling", "Gnome", "Half-Orc", "Tiefling", "Dragonborn", "Kobold", "Lizardfolk", "Minotaur", "Troll", "Vampire", "Satyr", "Undead", "Lich", "Werewolf"]
 classes = ["Fighter", "Wizard", "Rogue", "Cleric", "Barbarian", "Sorcerer", "Bard", "Monk", "Druid", "Ranger", "Paladin", "Warlock", "Artificer", "Blood Hunter", "Mystic", "Warden", "Berserker", "Necromancer", "Trickster", "Beast Master", "Alchemist", "Pyromancer", "Dark Knight"]
