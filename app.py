@@ -322,11 +322,11 @@ if mode == "World Builder":
             if not st.session_state.worlds:
                 st.info("No worlds created yet. Create a region to start generating journals.")
             else:
-                for world in st.session_state.worlds:
+                for idx, world in enumerate(st.session_state.worlds):
                     st.subheader(f"📜 Journals for {world['name']}")
-                    journal_text = generate_world_journal(world)
-                    st.text_area("Journal Text", value=journal_text, height=300)
-                    if st.button(f"Save Journal for {world['name']}"):
+                    journal_text = generate_journal(world)
+                    st.text_area(f"Journal Text - {world['name']}", value=journal_text, height=300, key=f"journal_text_{idx}")
+                    if st.button(f"Save Journal for {world['name']}", key=f"save_journal_{idx}"):
                         # Append new entries to the existing journal
                         previous_journal = load_journal(world['name'])
                         updated_journal = f"{previous_journal}\n\n{journal_text}" if previous_journal else journal_text
@@ -341,7 +341,7 @@ if mode == "World Builder":
                         draw_wrapped_text(c, updated_journal, 50, 730, 500, 14)
                         c.save()
                         pdf_buf.seek(0)
-                        st.download_button("Download Journal as PDF", data=pdf_buf, file_name=f"journal_{world['name']}.pdf", mime="application/pdf")
+                        st.download_button("Download Journal as PDF", data=pdf_buf, file_name=f"journal_{world['name']}.pdf", mime="application/pdf", key=f"download_journal_{idx}")
         with subtab2:
             st.header("📝 World Stories")
             if not st.session_state.stories:
@@ -352,10 +352,10 @@ if mode == "World Builder":
                         st.markdown(f"**Character**: {story['character']['Name']} ({story['character']['Class']})")
                         st.markdown(f"**NPC**: {story['npc']['name']} - {story['npc']['role']}")
                         st.markdown(f"**Quest**: {story['quest']['title']}")
-                        st.text_area("Story Text", value=story['story'], height=200)
+                        st.text_area(f"Story Text - {idx+1}", value=story['story'], height=200, key=f"story_text_{idx}")
                         # Download JSON
                         story_json = json.dumps(story, indent=4)
-                        st.download_button("Download JSON", story_json, file_name=f"story_{idx+1}.json")
+                        st.download_button("Download JSON", story_json, file_name=f"story_{idx+1}.json", key=f"download_json_{idx}")
                         # PDF export for story
                         pdf_buf = BytesIO()
                         c = canvas.Canvas(pdf_buf, pagesize=letter)
@@ -365,6 +365,5 @@ if mode == "World Builder":
                         y = draw_wrapped_text(c, story['story'], 50, 730, 500, 14)
                         c.save()
                         pdf_buf.seek(0)
-                        st.download_button("Download PDF", data=pdf_buf, file_name=f"story_{idx+1}.pdf", mime="application/pdf")
-
+                        st.download_button("Download PDF", data=pdf_buf, file_name=f"story_{idx+1}.pdf", mime="application/pdf", key=f"download_pdf_{idx}")
 
