@@ -19,8 +19,6 @@ if "characters" not in st.session_state:
     st.session_state.characters = []
 if "parties" not in st.session_state:
     st.session_state.parties = []
-if "npc_chains" not in st.session_state:
-    st.session_state.npc_chains = []
 if "stories" not in st.session_state:
     st.session_state.stories = []
 if "worlds" not in st.session_state:
@@ -39,7 +37,7 @@ def generate_character(name, gender, race, character_class, background):
 
 def generate_character_history(character, generate_history=True):
     if generate_history:
-        prompt = f"Create a short backstory for a {character['Race']} {character['Class']} named {character['Name']}. They come from a {character['Background']} background. Include motivations, key events, and a mystery."
+        prompt = f"Create a short backstory for a {character['Race']} {character['Class']} named {character['Name']}. They come from a {character['Background']} background. Include motivations and key events and locations, don't use existing names from reality"
         response = openai.ChatCompletion.create(
             model="gpt-4o-mini",
             messages=[{"role": "system", "content": "You are a creative storyteller."}, {"role": "user", "content": prompt}]
@@ -185,8 +183,7 @@ def save_to_json(character, npc, quest, file_name="character_data.json"):
 
 # --- MAIN UI ---
 st.title("🎭 Mana Forge Character Generator & Toolkit")
-mode = st.sidebar.radio("Select Mode:", [ "Character", "Party", "NPC Chains", "Quests", "Story Mode","World Builder"])
-
+mode = st.sidebar.radio("Select Mode:", [ "Character", "Party",  "Quests", "Story Mode","World Builder"])
 
 # Character mode
 if mode == "Character":
@@ -194,13 +191,7 @@ if mode == "Character":
     selected_race = st.selectbox("Select race:", races)
     selected_gender = st.selectbox("Select gender:", genders)
     auto_generate = st.checkbox("Auto-generate class & background?", value=True)
-    if auto_generate:
-        character_class = random.choice(classes)
-        background = random.choice(backgrounds)
-        st.write(f"Class: {character_class} | Background: {background}")
-    else:
-        character_class = st.selectbox("Select class:", classes)
-        background = st.selectbox("Select background:", backgrounds)
+
     selected_style = st.selectbox("Select Art Style:", image_styles)
     generate_music = st.checkbox("Generate Theme Song (Audiocraft)")
     generate_turnaround = st.checkbox("Generate 360° Turnaround")
@@ -209,10 +200,20 @@ if mode == "Character":
     generate_history = st.checkbox("Generate Character History")
     generate_npc_text = st.checkbox("Generate NPC Text")
     generate_quest_text = st.checkbox("Generate Quest Text")
+
+    if not auto_generate:
+        character_class = st.selectbox("Select class:", classes)
+        background = st.selectbox("Select background:", backgrounds)
+
     if st.button("Generate Character"):
         if not name.strip():
             st.warning("Please enter a name.")
         else:
+            # Handle auto-generation inside the button press
+            if auto_generate:
+                character_class = random.choice(classes)
+                background = random.choice(backgrounds)
+
             char = generate_character(name, selected_gender, selected_race, character_class, background)
             char["History"] = generate_character_history(char, generate_history)
             image_urls = [generate_character_image(char, selected_style)]
@@ -224,7 +225,7 @@ if mode == "Character":
             npc = generate_npc(generate_npc_text)
             quest = generate_quest(generate_quest_text)
             st.session_state.characters.append({"character": char, "npc": npc, "quest": quest, "images": image_urls})
-            st.success("Character Created!")
+            st.success(f"Character '{char['Name']}' Created!")
 
     for i, data in enumerate(st.session_state.characters):
         ch, npc, quest, imgs = data['character'], data['npc'], data['quest'], data['images']
@@ -258,8 +259,6 @@ elif mode == "Quests":
             quest = entry["quest"]
             st.subheader(f"{ch['Name']} — Quest: {quest['title']}")
             st.write(quest['description'])
-
-# Party mode and NPC Chains mode would continue here...
 
 # Party mode
 elif mode == "Party":
@@ -342,10 +341,10 @@ elif mode == "Story Mode":
 if mode == "World Builder":
     tab1, tab2 = st.tabs(["Regions", "Stories"])
     with tab1:
-        world_name = st.text_input("Enter World Name:")
-        if st.button("Create World") and world_name.strip():
+        world_name = st.text_input("Enter Region Name:")
+        if st.button("Create Region") and world_name.strip():
             world = initialize_world(world_name)
-            st.success(f"World '{world_name}' Created!")
+            st.success(f"Region '{world_name}' Created!")
         if st.session_state.worlds:
             for world in st.session_state.worlds:
                 st.subheader(f"🌍 {world['name']}")
