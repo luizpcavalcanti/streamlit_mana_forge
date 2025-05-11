@@ -185,7 +185,7 @@ def save_to_json(character, npc, quest, file_name="character_data.json"):
 
 # --- MAIN UI ---
 st.title("🎭 Mana Forge Character Generator & Toolkit")
-mode = st.sidebar.radio("Select Mode:", [ "Character", "Party", "Quests", "Story Mode", "World Builder"])
+mode = st.sidebar.radio("Select Mode:", [ "Character", "Party", "Story Mode", "World Builder"])
 
 # Character mode
 if mode == "Character":
@@ -250,17 +250,6 @@ if mode == "Character":
             pdf_buf = create_pdf(ch, npc, quest, imgs)
             st.download_button("Download PDF", data=pdf_buf, file_name=f"{ch['Name']}.pdf", mime="application/pdf")
 
-# New Quests tab
-elif mode == "Quests":
-    st.header("🗺️ All Generated Quests")
-    if not st.session_state.characters:
-        st.info("No quests generated yet. Create some characters first!")
-    else:
-        for i, entry in enumerate(st.session_state.characters):
-            ch = entry["character"]
-            quest = entry["quest"]
-            st.subheader(f"{ch['Name']} — Quest: {quest['title']}")
-            st.write(quest['description'])
 
 # Party mode
 elif mode == "Party":
