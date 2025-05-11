@@ -78,17 +78,45 @@ def generate_world_journal(world):
     journal_entries = []
     for region_key, region in world["regions"].items():
         entry = f"**{region['name']}**\n"
+        
+        # Include capital city info
         if region["capital"]:
             entry += "Capital Region\n"
+        
+        # Add special traits or lore to the region
         if region["special_traits"]:
             entry += "Special Traits:\n" + "\n".join([f"- {trait}" for trait in region["special_traits"]]) + "\n"
+        
+        # Add characters info
         if region["characters"]:
             entry += "Characters:\n" + "\n".join([f"- {c['Name']} ({c['Race']} {c['Class']}) - Last Seen: {c.get('last_action', 'Unknown')}" for c in region["characters"]]) + "\n"
+        
+        # Add NPC info
         if region["npcs"]:
             entry += "NPCs:\n" + "\n".join([f"- {npc['name']} ({npc['role']}) - Last Seen: {npc.get('last_action', 'Unknown')}" for npc in region["npcs"]]) + "\n"
+        
+        # Add quests info
         if region["quests"]:
             entry += "Quests:\n" + "\n".join([f"- {quest['title']} - Last Update: {quest.get('last_action', 'Unknown')}" for quest in region["quests"]]) + "\n"
+        
+        # Use AI to generate regional content based on stories, characters, and quests
+        if region["characters"] or region["quests"]:
+            prompt = f"Generate a fantasy description of the region '{region['name']}' using the following elements:\n"
+            prompt += "Characters:\n" + "\n".join([f"- {c['Name']} ({c['Race']} {c['Class']})" for c in region["characters"]]) + "\n" if region["characters"] else ""
+            prompt += "NPCs:\n" + "\n".join([f"- {npc['name']} ({npc['role']})" for npc in region["npcs"]]) + "\n" if region["npcs"] else ""
+            prompt += "Quests:\n" + "\n".join([f"- {quest['title']}: {quest['description']}" for quest in region["quests"]]) + "\n" if region["quests"] else ""
+            prompt += f"Generate a rich, detailed story or lore for this region based on these elements, adding mystery, drama, or historical context.\n"
+            
+            # Get a response from the AI to enrich the region with lore and details
+            response = openai.ChatCompletion.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "system", "content": "You are a fantasy world-building assistant."},
+                          {"role": "user", "content": prompt}]
+            )
+            entry += f"Lore/Story:\n{response['choices'][0]['message']['content']}\n"
+        
         journal_entries.append(entry)
+    
     return "\n\n".join(journal_entries)
 
 
