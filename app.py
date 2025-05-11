@@ -279,6 +279,54 @@ elif mode == "Party":
                     buf = BytesIO(); c = canvas.Canvas(buf, pagesize=letter)
                     c.drawString(50, 750, f"Party: {names}"); c.drawString(50, 730, party['story']); c.showPage(); c.save(); buf.seek(0)
                     st.download_button("Download Party PDF", data=buf, file_name=f"party_{idx+1}.pdf", mime="application/pdf")
+
+# --- STORY MODE TAB ---
+elif mode == "Story Mode":
+    st.header("📜 Story Mode")
+
+    if not st.session_state.characters:
+        st.warning("Please generate characters first in the Character tab.")
+    else:
+        character_names = [c['character']['Name'] for c in st.session_state.characters]
+        selected_char_index = st.selectbox("Select Character:", range(len(character_names)), format_func=lambda i: character_names[i])
+        selected_character_data = st.session_state.characters[selected_char_index]
+
+        selected_character = selected_character_data['character']
+        selected_npc = selected_character_data['npc']
+        selected_quest = selected_character_data['quest']
+
+        if st.button("Generate Story"):
+            story_text = generate_story(selected_character, selected_npc, selected_quest)
+            st.session_state.stories.append({
+                "character": selected_character,
+                "npc": selected_npc,
+                "quest": selected_quest,
+                "story": story_text
+            })
+            st.success("Story generated!")
+
+    if st.session_state.stories:
+        st.subheader("Generated Stories")
+        for idx, entry in enumerate(st.session_state.stories):
+            with st.expander(f"Story {idx+1}: {entry['character']['Name']} - {entry['quest']['title']}"):
+                st.markdown(f"**Character**: {entry['character']['Name']} ({entry['character']['Class']})")
+                st.markdown(f"**NPC**: {entry['npc']['name']} - {entry['npc']['role']}")
+                st.markdown(f"**Quest**: {entry['quest']['title']}")
+                st.text_area("Story Text", value=entry['story'], height=200)
+                
+                story_json = json.dumps(entry, indent=4)
+                st.download_button("Download JSON", story_json, file_name=f"story_{idx+1}.json")
+
+                # PDF export for story
+                pdf_buf = BytesIO()
+                c = canvas.Canvas(pdf_buf, pagesize=letter)
+                c.setFont("Helvetica-Bold", 12)
+                c.drawString(50, 750, f"Story {idx+1}: {entry['character']['Name']} - {entry['quest']['title']}")
+                c.setFont("Helvetica", 10)
+                y = draw_wrapped_text(c, entry['story'], 50, 730, 500, 14)
+                c.save()
+                pdf_buf.seek(0)
+                st.download_button("Download PDF", data=pdf_buf, file_name=f"story_{idx+1}.pdf", mime="application/pdf")
                     
 if mode == "World Builder":
     tab1, tab2 = st.tabs(["Regions", "Journals and Stories"])
