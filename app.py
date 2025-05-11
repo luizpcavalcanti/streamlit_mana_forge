@@ -62,6 +62,18 @@ def add_to_region(world_name, region_key, entry_type, entry):
             world["regions"][region_key][entry_type].append(entry)
 
 
+def save_journal(world_name, journal_text):
+    filename = f"journal_{world_name}.txt"
+    with open(filename, "w", encoding="utf-8") as file:
+        file.write(journal_text)
+
+def load_journal(world_name):
+    filename = f"journal_{world_name}.txt"
+    if os.path.exists(filename):
+        with open(filename, "r", encoding="utf-8") as file:
+            return file.read()
+    return ""
+
 def generate_world_journal(world):
     journal_entries = []
     for region_key, region in world["regions"].items():
@@ -361,24 +373,29 @@ if mode == "World Builder":
             else:
                 for idx, world in enumerate(st.session_state.worlds):
                     st.subheader(f"📜 Journals for {world['name']}")
-                    journal_text = generate_world_journal(world)
-                    st.text_area(f"Journal Text - {world['name']}", value=journal_text, height=300, key=f"journal_text_{idx}")
+                    # Load previous journal
+                    previous_journal = load_journal(world['name'])
+                    current_journal = generate_world_journal(world)
+        
+                    # Combine with previous journal if it exists
+                    full_journal = f"{previous_journal}\n\n{current_journal}".strip()
+                    st.text_area(f"Journal Text - {world['name']}", value=full_journal, height=300, key=f"journal_text_{idx}")
+        
                     if st.button(f"Save Journal for {world['name']}", key=f"save_journal_{idx}"):
-                        # Append new entries to the existing journal
-                        previous_journal = load_journal(world['name'])
-                        updated_journal = f"{previous_journal}\n\n{journal_text}" if previous_journal else journal_text
-                        save_journal(world['name'], updated_journal)
+                        save_journal(world['name'], full_journal)
                         st.success(f"Journal saved for {world['name']}!")
+        
                         # Generate PDF for the updated journal
                         pdf_buf = BytesIO()
                         c = canvas.Canvas(pdf_buf, pagesize=letter)
                         c.setFont("Helvetica-Bold", 14)
                         c.drawString(50, 750, f"Journal for {world['name']}")
                         c.setFont("Helvetica", 10)
-                        draw_wrapped_text(c, updated_journal, 50, 730, 500, 14)
+                        draw_wrapped_text(c, full_journal, 50, 730, 500, 14)
                         c.save()
                         pdf_buf.seek(0)
                         st.download_button("Download Journal as PDF", data=pdf_buf, file_name=f"journal_{world['name']}.pdf", mime="application/pdf", key=f"download_journal_{idx}")
+
         with subtab2:
             st.header("📝 World Stories")
             if not st.session_state.stories:
