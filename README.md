@@ -1,4 +1,4 @@
-# Mana Forge Character Generator
+# Mana Forge Character Generator and Toolkit
 
 ## 🧙 Overview
 
