@@ -324,7 +324,7 @@ if mode == "World Builder":
             else:
                 for world in st.session_state.worlds:
                     st.subheader(f"📜 Journals for {world['name']}")
-                    journal_text = generate_journal(world)
+                    journal_text = generate_world_journal(world)
                     st.text_area("Journal Text", value=journal_text, height=300)
                     if st.button(f"Save Journal for {world['name']}"):
                         # Append new entries to the existing journal
