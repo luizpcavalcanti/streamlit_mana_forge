@@ -78,14 +78,24 @@ def generate_location_names(count=10):
             locations.append({"name": name.strip(), "description": description.strip()})
     return locations
 
-
 def initialize_world(world_name):
     world = {"name": world_name, "regions": {}}
+    npcs = generate_npc_names(10)
+    locations = generate_location_names(10)
     for i in range(5):
         for j in range(5):
-            world["regions"][f"{i+1}-{j+1}"] = {"name": f"Location {i+1}-{j+1}", "characters": [], "npcs": [], "quests": [], "capital": False, "special_traits": []}
+            region_key = f"{i+1}-{j+1}"
+            world["regions"][region_key] = {
+                "name": f"Location {i+1}-{j+1}",
+                "characters": [],
+                "npcs": [npcs.pop() if npcs else generate_npc()],
+                "quests": [],
+                "capital": False,
+                "special_traits": []
+            }
     st.session_state.worlds.append(world)
     return world
+
 
 def add_to_region(world_name, region_key, entry_type, entry):
     for world in st.session_state.worlds:
@@ -431,8 +441,8 @@ elif mode == "Story Mode":
                 c.save()
                 pdf_buf.seek(0)
                 st.download_button("Download PDF", data=pdf_buf, file_name=f"story_{idx+1}.pdf", mime="application/pdf")
-                    
-if mode == "World Builder":
+                
+ if mode == "World Builder":
     tab1, tab2 = st.tabs(["Regions", "Journals and Stories"])
     with tab1:
         world_name = st.text_input("Enter Region Name:")
@@ -460,10 +470,8 @@ if mode == "World Builder":
         npc_count = st.slider("Number of NPCs to generate:", min_value=1, max_value=20, value=10)
         loc_count = st.slider("Number of Locations to generate:", min_value=1, max_value=20, value=10)
         if st.button("Generate NPCs and Locations"):
-            npcs = generate_npc_names(npc_count)
-            locations = generate_location_names(loc_count)
-            st.session_state.npcs = npcs
-            st.session_state.locations = locations
+            st.session_state.npcs = generate_npc_names(npc_count)
+            st.session_state.locations = generate_location_names(loc_count)
             st.success(f"Generated {npc_count} NPCs and {loc_count} locations!")
         if "npcs" in st.session_state and "locations" in st.session_state:
             st.subheader("Generated NPCs")
