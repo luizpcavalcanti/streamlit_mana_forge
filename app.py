@@ -55,7 +55,7 @@ def generate_character_history(character, generate_history=True):
         prompt = f"Create a short backstory for a {character['Race']} {character['Class']} named {character['Name']}. They come from a {character['Background']} background. Include motivations and key events and locations, don't use existing names from reality"
         response = openai.ChatCompletion.create(
             model="gpt-4o-mini",
-            messages=[{"role": "system", "content": "You are a creative storyteller."}, {"role": "user", "content": prompt}]
+            messages=[{"role": "system", "content": "You are a creative storyteller, written in the style of George RR Martin, but not named as his characters."}, {"role": "user", "content": prompt}]
         )
         return response["choices"][0]["message"]["content"]
     return ""
@@ -139,8 +139,7 @@ def generate_story(character, npc, quest):
         f"Write a short D&D style story paragraph involving the following quest, party, and NPC:\n"
         f"Character: {character['Name']} ({character['Race']} {character['Class']}, {character['Background']})\n"
         f"NPC: {npc['name']} - {npc['role']}, {npc['backstory']}\n"
-        f"Quest: {quest['title']} - {quest['description']}\n"
-        f"Make it immersive and written like a fantasy storyteller recounting an adventure."
+        f"Make it immersive and written like George RR Martin recounting an adventure."
     )
     response = openai.ChatCompletion.create(
         model="gpt-4o-mini",
