@@ -329,77 +329,72 @@ elif mode == "Story Mode":
                 st.download_button("Download PDF", data=pdf_buf, file_name=f"story_{idx+1}.pdf", mime="application/pdf")
                     
 if mode == "World Builder":
-    tab1, tab2 = st.tabs(["Regions", "Journals and Stories"])
+     
+    # Regions Tab
     with tab1:
         world_name = st.text_input("Enter Region Name:")
         if st.button("Create Region") and world_name.strip():
-            world = initialize_world(world_name)
+            st.session_state['worlds'].append({'name': world_name, 'history': '', 'entries': []})
             st.success(f"Region '{world_name}' Created!")
-        if st.session_state.worlds:
-            for world in st.session_state.worlds:
+        
+        if st.session_state['worlds']:
+            for world in st.session_state['worlds']:
                 st.subheader(f"🌍 {world['name']}")
                 for i in range(5):
                     cols = st.columns(5)
                     for j in range(5):
                         loc_key = f"{i+1}-{j+1}"
-                        region = world["regions"][loc_key]
+                        region = generate_region(f"Region {loc_key}", loc_key)
                         cols[j].write(f"**{region['name']}**")
-                        if region["characters"] or region["npcs"] or region["quests"]:
+                        if region['characters'] or region['npcs'] or region['quests']:
                             cols[j].write(f"{len(region['characters'])} Characters, {len(region['npcs'])} NPCs, {len(region['quests'])} Quests")
-                        if region["capital"]:
+                        if region['capital']:
                             cols[j].write("🏰 Capital Region")
-                        if region["special_traits"]:
+                        if region['special_traits']:
                             cols[j].write("🌟 Special Traits:")
-                            for trait in region["special_traits"]:
+                            for trait in region['special_traits']:
                                 cols[j].write(f"- {trait}")
+    
+    # Journals and Stories Tab
     with tab2:
         subtab1, subtab2 = st.tabs(["Journals", "Stories"])
+        
+        # Journals Subtab
         with subtab1:
             st.header("📓 Journals")
-            if not st.session_state.worlds:
+            if not st.session_state['worlds']:
                 st.info("No worlds created yet. Create a region to start generating journals.")
             else:
-                for idx, world in enumerate(st.session_state.worlds):
+                for idx, world in enumerate(st.session_state['worlds']):
                     st.subheader(f"📜 Journals for {world['name']}")
-                    journal_text = generate_world_journal(world)
+                    journal_text = generate_journal_entry(world['name'], selected_characters, selected_quests, selected_npcs)
                     st.text_area(f"Journal Text - {world['name']}", value=journal_text, height=300, key=f"journal_text_{idx}")
                     if st.button(f"Save Journal for {world['name']}", key=f"save_journal_{idx}"):
-                        # Append new entries to the existing journal
-                        previous_journal = load_journal(world['name'])
-                        updated_journal = f"{previous_journal}\n\n{journal_text}" if previous_journal else journal_text
-                        save_journal(world['name'], updated_journal)
+                        # Save journal
+                        st.session_state['journals'].append(journal_text)
                         st.success(f"Journal saved for {world['name']}!")
-                        # Generate PDF for the updated journal
-                        pdf_buf = BytesIO()
-                        c = canvas.Canvas(pdf_buf, pagesize=letter)
-                        c.setFont("Helvetica-Bold", 14)
-                        c.drawString(50, 750, f"Journal for {world['name']}")
-                        c.setFont("Helvetica", 10)
-                        draw_wrapped_text(c, updated_journal, 50, 730, 500, 14)
-                        c.save()
-                        pdf_buf.seek(0)
-                        st.download_button("Download Journal as PDF", data=pdf_buf, file_name=f"journal_{world['name']}.pdf", mime="application/pdf", key=f"download_journal_{idx}")
+        
+        # Stories Subtab
         with subtab2:
             st.header("📝 World Stories")
-            if not st.session_state.stories:
-                st.info("No stories created yet. Use the **Story Mode** to generate and save some epic tales!")
-            else:
-                for idx, story in enumerate(st.session_state.stories):
-                    with st.expander(f"Story {idx+1}: {story['character']['Name']} - {story['quest']['title']}"):
-                        st.markdown(f"**Character**: {story['character']['Name']} ({story['character']['Class']})")
-                        st.markdown(f"**NPC**: {story['npc']['name']} - {story['npc']['role']}")
-                        st.markdown(f"**Quest**: {story['quest']['title']}")
-                        st.text_area(f"Story Text - {idx+1}", value=story['story'], height=200, key=f"story_text_{idx}")
-                        # Download JSON
-                        story_json = json.dumps(story, indent=4)
-                        st.download_button("Download JSON", story_json, file_name=f"story_{idx+1}.json", key=f"download_json_{idx}")
-                        # PDF export for story
-                        pdf_buf = BytesIO()
-                        c = canvas.Canvas(pdf_buf, pagesize=letter)
-                        c.setFont("Helvetica-Bold", 12)
-                        c.drawString(50, 750, f"Story {idx+1}: {story['character']['Name']} - {story['quest']['title']}")
-                        c.setFont("Helvetica", 10)
-                        y = draw_wrapped_text(c, story['story'], 50, 730, 500, 14)
-                        c.save()
-                        pdf_buf.seek(0)
-                        st.download_button("Download PDF", data=pdf_buf, file_name=f"story_{idx+1}.pdf", mime="application/pdf", key=f"download_pdf_{idx}")
+            st.write("Story generation coming soon...")
+    
+    # Story Mode Tab
+    with tab3:
+        st.header("📚 Story Mode")
+        if not selected_characters or not selected_quests or not selected_npcs:
+            st.info("Select at least one character, quest, and NPC to generate a story.")
+        else:
+            if st.button("Generate Story"):
+                character = random.choice(selected_characters)
+                quest = random.choice(selected_quests)
+                npc = random.choice(selected_npcs)
+                story_text = f"As the moon rose over {world_name}, {character} embarked on the quest '{quest}', guided by the wisdom of {npc}."
+                st.text_area("Generated Story", value=story_text, height=300)
+                # Save story
+                st.session_state['journals'].append(story_text)
+                st.success("Story generated and saved!")
+
+if __name__ == "__main__":
+    main()
+
