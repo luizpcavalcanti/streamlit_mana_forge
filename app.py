@@ -182,7 +182,7 @@ def save_to_json(character, npc, quest, file_name="character_data.json"):
     with open(file_name, 'w') as f:
         json.dump({"character": character, "npc": npc, "quest": quest}, f, indent=4)
         
---- MAIN UI ---
+# --- MAIN UI ---
 st.markdown("""
     <style>
     .title {
@@ -196,6 +196,7 @@ st.markdown("""
 
 st.title("🎭 Mana Forge Character Generator & Toolkit", anchor="title")
 mode = st.sidebar.radio("Select Mode:", ["Character", "Party", "Story Mode", "World Builder"])
+
 # Character mode
 if mode == "Character":
     name = st.text_input("Enter character name:")
