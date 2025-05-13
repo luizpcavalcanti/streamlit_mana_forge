@@ -14,10 +14,10 @@ import requests
 st.markdown("""
     <style>
     .title {
-        font-size: 32px;
+        font-size: 62px;
     }
     .sidebar .sidebar-content {
-        font-size: 38px;
+        font-size: 78px;
     }
     </style>
 """, unsafe_allow_html=True)
