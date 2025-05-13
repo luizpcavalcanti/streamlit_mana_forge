@@ -404,7 +404,3 @@ if mode == "World Builder":
                 # Save story
                 st.session_state['journals'].append(story_text)
                 st.success("Story generated and saved!")
-
-if __name__ == "__main__":
-    main()
-
