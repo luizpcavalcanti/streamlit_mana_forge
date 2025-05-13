@@ -291,7 +291,6 @@ if mode == "Character":
             pdf_buf = create_pdf(ch, npc, quest, imgs)
             st.download_button("Download PDF", data=pdf_buf, file_name=f"{ch['Name']}.pdf", mime="application/pdf")
 
-
 # Party mode
 elif mode == "Party":
     st.header("🧑‍🤝‍🧑 Party Builder")
@@ -300,32 +299,56 @@ elif mode == "Party":
     else:
         options = [f"{i+1}. {d['character']['Name']}" for i, d in enumerate(st.session_state.characters)]
         selected = st.multiselect("Select party members:", options)
+        
         if st.button("Form Party") and selected:
             idxs = [options.index(s) for s in selected]
             members = [st.session_state.characters[i] for i in idxs]
             names = ", ".join([m['character']['Name'] for m in members])
-            response = openai.ChatCompletion.create(model="gpt-4o-mini", messages=[{"role": "user", "content": f"Write a group story for party members: {names}."}])
+            response = openai.ChatCompletion.create(
+                model="gpt-4o-mini", 
+                messages=[{"role": "user", "content": f"Write a group story for party members: {names}."}]
+            )
             story = response['choices'][0]['message']['content']
             st.session_state.parties.append({"members": members, "story": story})
             st.success("Party Created!")
+        
         for idx, party in enumerate(st.session_state.parties):
             exp = st.expander(f"Party {idx+1}: {', '.join([m['character']['Name'] for m in party['members']])}")
             with exp:
                 subtabs = st.tabs(["Overview", "Story", "Export"])
+                
+                # Overview Tab
                 with subtabs[0]:
-                    for m in party['members']: st.write(m['character']['Name'])
-                with subtabs[1]: st.write(party['story'])
+                    for m in party['members']:
+                        st.write(m['character']['Name'])
+                
+                # Story Tab
+                with subtabs[1]:
+                    st.write(party['story'])
+                    if st.button(f"Generate New Story for Party {idx+1}"):
+                        names = ", ".join([m['character']['Name'] for m in party['members']])
+                        response = openai.ChatCompletion.create(
+                            model="gpt-4o-mini", 
+                            messages=[{"role": "user", "content": f"Write a new group story for party members: {names}."}]
+                        )
+                        new_story = response['choices'][0]['message']['content']
+                        party['story'] += "\n\n" + new_story  # Append the new story
+                        st.session_state.parties[idx] = party  # Update the party in the session state
+                        st.success("New story generated and appended!")
+                
+                # Export Tab
                 with subtabs[2]:
                     st.download_button("Download Party JSON", data=json.dumps(party), file_name=f"party_{idx+1}.json")
                     buf = BytesIO()
                     c = canvas.Canvas(buf, pagesize=letter)
                     c.setFont("Helvetica", 8)
-                    c.drawString(50, 750, f"Party: {names}")
+                    c.drawString(50, 750, f"Party: {', '.join([m['character']['Name'] for m in party['members']])}")
                     y = draw_wrapped_text(c, party['story'], 50, 730, max_width=500, line_height=12)
                     c.showPage()
                     c.save()
                     buf.seek(0)
                     st.download_button("Download Party PDF", data=buf, file_name=f"party_{idx+1}.pdf", mime="application/pdf")
+
                 
 
 # --- STORY MODE/Quest Creator TAB ---
