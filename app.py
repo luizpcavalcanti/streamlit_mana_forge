@@ -290,7 +290,6 @@ if mode == "Character":
             st.download_button("Download JSON", data=json.dumps({"character": ch, "npc": npc, "quest": quest}), file_name=f"{ch['Name']}.json")
             pdf_buf = create_pdf(ch, npc, quest, imgs)
             st.download_button("Download PDF", data=pdf_buf, file_name=f"{ch['Name']}.pdf", mime="application/pdf")
-
 # Party mode
 elif mode == "Party":
     st.header("🧑‍🤝‍🧑 Party Builder")
@@ -325,16 +324,18 @@ elif mode == "Party":
                 # Story Tab
                 with subtabs[1]:
                     st.write(party['story'])
-                    if st.button(f"Generate New Story for Party {idx+1}"):
-                        names = ", ".join([m['character']['Name'] for m in party['members']])
-                        response = openai.ChatCompletion.create(
-                            model="gpt-4o-mini", 
-                            messages=[{"role": "user", "content": f"Write a new group story for party members: {names}."}]
-                        )
-                        new_story = response['choices'][0]['message']['content']
-                        party['story'] += "\n\n" + new_story  # Append the new story
-                        st.session_state.parties[idx] = party  # Update the party in the session state
-                        st.success("New story generated and appended!")
+                    # Use a form for the button to handle state correctly
+                    with st.form(f"story_form_{idx}"):
+                        if st.form_submit_button("Generate New Story"):
+                            names = ", ".join([m['character']['Name'] for m in party['members']])
+                            response = openai.ChatCompletion.create(
+                                model="gpt-4o-mini", 
+                                messages=[{"role": "user", "content": f"Write a new group story for party members: {names}."}]
+                            )
+                            new_story = response['choices'][0]['message']['content']
+                            party['story'] += "\n\n" + new_story  # Append the new story
+                            st.session_state.parties[idx] = party  # Update the party in the session state
+                            st.success("New story generated and appended!")
                 
                 # Export Tab
                 with subtabs[2]:
@@ -348,8 +349,6 @@ elif mode == "Party":
                     c.save()
                     buf.seek(0)
                     st.download_button("Download Party PDF", data=buf, file_name=f"party_{idx+1}.pdf", mime="application/pdf")
-
-                
 
 # --- STORY MODE/Quest Creator TAB ---
 elif mode == "Story Mode":
