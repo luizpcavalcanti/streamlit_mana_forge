@@ -10,6 +10,19 @@ from reportlab.lib.utils import simpleSplit, ImageReader
 import base64
 import requests
 
+
+st.markdown("""
+    <style>
+    .title {
+        font-size: 32px;
+    }
+    .sidebar .sidebar-content {
+        font-size: 38px;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+
 # Load OpenAI key securely
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
@@ -223,17 +236,6 @@ def save_to_json(character, npc, quest, file_name="character_data.json"):
         json.dump({"character": character, "npc": npc, "quest": quest}, f, indent=4)
         
 # --- MAIN UI ---
-st.markdown("""
-    <style>
-    .title {
-        font-size: 32px;
-    }
-    .sidebar .sidebar-content {
-        font-size: 38px;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
 st.title("🎭 Mana Forge Character Generator & Toolkit", anchor="title")
 mode = st.sidebar.radio("Select Mode:", ["Character", "Party", "Story Mode", "World Builder"])
 
