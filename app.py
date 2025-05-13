@@ -222,7 +222,7 @@ def save_to_json(character, npc, quest, file_name="character_data.json"):
         
 # --- MAIN UI ---
 st.title("🎭 Mana Forge Character Generator & Toolkit", anchor="title")
-mode = st.sidebar.radio("Select Mode:", ["Character", "Party", "Story Mode", "World Builder"])
+mode = st.sidebar.radio("Select Mode:", ["Character", "Party", "Quests", "World Builder"])
 
 
 # Character mode
@@ -333,17 +333,17 @@ elif mode == "Story Mode":
         selected_npc = selected_character_data['npc']
         selected_quest = selected_character_data['quest']
 
-        if st.button("Generate Story"):
+        if st.button("Generate"):
             story_text = generate_story(selected_character, selected_npc)
             st.session_state.stories.append({
                 "character": selected_character,
                 "npc": selected_npc,
                 "story": story_text
             })
-            st.success("Story generated!")
+            st.success("Quest generated!")
 
     if st.session_state.stories:
-        st.subheader("Generated Stories")
+        st.subheader("Quests")
         for idx, entry in enumerate(st.session_state.stories):
             with st.expander(f"Story {idx+1}: {entry['character']['Name']} - {entry['quest']['title']}"):
                 st.markdown(f"**Character**: {entry['character']['Name']} ({entry['character']['Class']})")
