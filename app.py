@@ -511,7 +511,12 @@ if mode == "World Builder":
         # Characters Subtab
         with subtab3:
             st.header("🦸 Characters")
-            st.info("Character management coming soon...")
+            if st.session_state.characters:
+                for character in st.session_state.characters:
+                    st.write(character)
+            else:
+                st.info("No characters created yet.")
+
 
         # NPCs Subtab
         with subtab4:
