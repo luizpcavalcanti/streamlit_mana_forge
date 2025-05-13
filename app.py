@@ -48,6 +48,37 @@ def generate_character_history(character, generate_history=True):
     return ""
 
 # World Builder Functions
+
+def generate_npc_names(count=10):
+    prompt = f"Generate {count} unique fantasy NPC names along with their roles and a brief background for each. Include some variety, like merchants, warriors, scholars, and mystics."
+    response = openai.ChatCompletion.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}]
+    )
+    lines = response["choices"][0]["message"]["content"].strip().split("\n")
+    npcs = []
+    for line in lines:
+        if ": " in line:
+            name, details = line.split(": ", 1)
+            role, background = details.split(". ", 1)
+            npcs.append({"name": name.strip(), "role": role.strip(), "backstory": background.strip()})
+    return npcs
+
+def generate_location_names(count=10):
+    prompt = f"Generate {count} unique fantasy location names with a short description for each. Include different types of places like towns, ancient ruins, mystical forests, and mountain strongholds."
+    response = openai.ChatCompletion.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}]
+    )
+    lines = response["choices"][0]["message"]["content"].strip().split("\n")
+    locations = []
+    for line in lines:
+        if ": " in line:
+            name, description = line.split(": ", 1)
+            locations.append({"name": name.strip(), "description": description.strip()})
+    return locations
+
+
 def initialize_world(world_name):
     world = {"name": world_name, "regions": {}}
     for i in range(5):
@@ -425,6 +456,22 @@ if mode == "World Builder":
                             cols[j].write("🌟 Special Traits:")
                             for trait in region["special_traits"]:
                                 cols[j].write(f"- {trait}")
+        # NPC and Location Generation
+        npc_count = st.slider("Number of NPCs to generate:", min_value=1, max_value=20, value=10)
+        loc_count = st.slider("Number of Locations to generate:", min_value=1, max_value=20, value=10)
+        if st.button("Generate NPCs and Locations"):
+            npcs = generate_npc_names(npc_count)
+            locations = generate_location_names(loc_count)
+            st.session_state.npcs = npcs
+            st.session_state.locations = locations
+            st.success(f"Generated {npc_count} NPCs and {loc_count} locations!")
+        if "npcs" in st.session_state and "locations" in st.session_state:
+            st.subheader("Generated NPCs")
+            for npc in st.session_state.npcs:
+                st.write(f"**{npc['name']}** ({npc['role']}) - {npc['backstory']}")
+            st.subheader("Generated Locations")
+            for loc in st.session_state.locations:
+                st.write(f"**{loc['name']}** - {loc['description']}")
     with tab2:
         subtab1, subtab2 = st.tabs(["Journals", "Stories"])
         with subtab1:
@@ -434,19 +481,13 @@ if mode == "World Builder":
             else:
                 for idx, world in enumerate(st.session_state.worlds):
                     st.subheader(f"📜 Journals for {world['name']}")
-                    # Load previous journal
                     previous_journal = load_journal(world['name'])
                     current_journal = generate_world_journal(world)
-        
-                    # Combine with previous journal if it exists
                     full_journal = f"{previous_journal}\n\n{current_journal}".strip()
                     st.text_area(f"Journal Text - {world['name']}", value=full_journal, height=300, key=f"journal_text_{idx}")
-        
                     if st.button(f"Save Journal for {world['name']}", key=f"save_journal_{idx}"):
                         save_journal(world['name'], full_journal)
                         st.success(f"Journal saved for {world['name']}!")
-        
-                        # Generate PDF for the updated journal
                         pdf_buf = BytesIO()
                         c = canvas.Canvas(pdf_buf, pagesize=letter)
                         c.setFont("Helvetica-Bold", 14)
@@ -456,7 +497,6 @@ if mode == "World Builder":
                         c.save()
                         pdf_buf.seek(0)
                         st.download_button("Download Journal as PDF", data=pdf_buf, file_name=f"journal_{world['name']}.pdf", mime="application/pdf", key=f"download_journal_{idx}")
-
         with subtab2:
             st.header("📝 World Stories")
             if not st.session_state.stories:
@@ -468,10 +508,8 @@ if mode == "World Builder":
                         st.markdown(f"**NPC**: {story['npc']['name']} - {story['npc']['role']}")
                         st.markdown(f"**Quest**: {story['quest']['title']}")
                         st.text_area(f"Story Text - {idx+1}", value=story['story'], height=200, key=f"story_text_{idx}")
-                        # Download JSON
                         story_json = json.dumps(story, indent=4)
                         st.download_button("Download JSON", story_json, file_name=f"story_{idx+1}.json", key=f"download_json_{idx}")
-                        # PDF export for story
                         pdf_buf = BytesIO()
                         c = canvas.Canvas(pdf_buf, pagesize=letter)
                         c.setFont("Helvetica-Bold", 12)
@@ -481,3 +519,4 @@ if mode == "World Builder":
                         c.save()
                         pdf_buf.seek(0)
                         st.download_button("Download PDF", data=pdf_buf, file_name=f"story_{idx+1}.pdf", mime="application/pdf", key=f"download_pdf_{idx}")
+
