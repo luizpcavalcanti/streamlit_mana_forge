@@ -144,13 +144,16 @@ def generate_npc(generate_npc_text=True):
     if generate_npc_text:
         prompt = "Generate a unique fantasy NPC name and their profession."
         response = openai.ChatCompletion.create(model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
-        parts = response["choices"][0]["message"]["content"].strip().split(", ")
-        name = parts[0]
-        role = parts[1] if len(parts) == 2 else random.choice(["merchant", "guard", "wizard", "priest"])
+        content = response["choices"][0]["message"]["content"].strip()
+        if ", " in content:
+            name, role = content.split(", ", 1)
+        else:
+            name, role = content, random.choice(["merchant", "guard", "wizard", "priest"])
         backstory = f"{name} is a {role} with a mysterious past."
     else:
         name, role, backstory = "Unknown", "Unknown", "No backstory provided."
     return {"name": name, "role": role, "backstory": backstory}
+
 
 def generate_quest(generate_quest_text=True):
     if generate_quest_text:
@@ -314,9 +317,16 @@ elif mode == "Party":
                 with subtabs[1]: st.write(party['story'])
                 with subtabs[2]:
                     st.download_button("Download Party JSON", data=json.dumps(party), file_name=f"party_{idx+1}.json")
-                    buf = BytesIO(); c = canvas.Canvas(buf, pagesize=letter)
-                    c.drawString(50, 750, f"Party: {names}"); c.drawString(50, 730, party['story']); c.showPage(); c.save(); buf.seek(0)
+                    buf = BytesIO()
+                    c = canvas.Canvas(buf, pagesize=letter)
+                    c.setFont("Helvetica", 8)
+                    c.drawString(50, 750, f"Party: {names}")
+                    y = draw_wrapped_text(c, party['story'], 50, 730, max_width=500, line_height=12)
+                    c.showPage()
+                    c.save()
+                    buf.seek(0)
                     st.download_button("Download Party PDF", data=buf, file_name=f"party_{idx+1}.pdf", mime="application/pdf")
+                
 
 # --- STORY MODE/Quest Creator TAB ---
 elif mode == "Story Mode":
@@ -334,10 +344,11 @@ elif mode == "Story Mode":
         selected_quest = selected_character_data['quest']
 
         if st.button("Generate"):
-            story_text = generate_story(selected_character, selected_npc)
+            story_text = generate_story(selected_character, selected_npc, selected_quest)
             st.session_state.stories.append({
                 "character": selected_character,
                 "npc": selected_npc,
+                "quest": selected_quest,  # Include quest
                 "story": story_text
             })
             st.success("Quest generated!")
