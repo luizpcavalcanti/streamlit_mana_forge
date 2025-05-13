@@ -328,9 +328,12 @@ elif mode == "Party":
                     with st.form(f"story_form_{idx}"):
                         if st.form_submit_button("Generate New Story"):
                             names = ", ".join([m['character']['Name'] for m in party['members']])
+                            existing_story = party['story']
                             response = openai.ChatCompletion.create(
-                                model="gpt-4o-mini", 
-                                messages=[{"role": "user", "content": f"Write a new group story for party members: {names}."}]
+                            model="gpt-4o-mini", 
+                            messages=[
+                            {"role": "user", "content": f"Continue the following story for the party members {names}:\n\n{existing_story}"}
+                                ]
                             )
                             new_story = response['choices'][0]['message']['content']
                             party['story'] += "\n\n" + new_story  # Append the new story
