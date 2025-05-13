@@ -10,19 +10,6 @@ from reportlab.lib.utils import simpleSplit, ImageReader
 import base64
 import requests
 
-
-st.markdown("""
-    <style>
-    .title {
-        font-size: 62px;
-    }
-    .sidebar .sidebar-content {
-        font-size: 78px;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-
 # Load OpenAI key securely
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
@@ -131,7 +118,6 @@ def generate_world_journal(world):
         journal_entries.append(entry)
     
     return "\n\n".join(journal_entries)
-
 
 
 def generate_story(character, npc, quest):
@@ -332,9 +318,9 @@ elif mode == "Party":
                     c.drawString(50, 750, f"Party: {names}"); c.drawString(50, 730, party['story']); c.showPage(); c.save(); buf.seek(0)
                     st.download_button("Download Party PDF", data=buf, file_name=f"party_{idx+1}.pdf", mime="application/pdf")
 
-# --- STORY MODE TAB ---
+# --- STORY MODE/Quest Creator TAB ---
 elif mode == "Story Mode":
-    st.header("📜 Story Mode")
+    st.header("📜 Quest Creator")
 
     if not st.session_state.characters:
         st.warning("Please generate characters first in the Character tab.")
@@ -348,11 +334,10 @@ elif mode == "Story Mode":
         selected_quest = selected_character_data['quest']
 
         if st.button("Generate Story"):
-            story_text = generate_story(selected_character, selected_npc, selected_quest)
+            story_text = generate_story(selected_character, selected_npc)
             st.session_state.stories.append({
                 "character": selected_character,
                 "npc": selected_npc,
-                "quest": selected_quest,
                 "story": story_text
             })
             st.success("Story generated!")
