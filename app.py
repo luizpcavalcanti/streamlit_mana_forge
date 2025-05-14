@@ -530,5 +530,20 @@ if mode == "World Builder":
 
         # Parties Subtab
         with subtab6:
-            st.header("🎭 Parties")
-            st.info("Party management coming soon...")
+            st.header("🪐 Skybox Generator")
+    
+        prompt = st.text_input("Describe your skybox:")
+        
+        styles = get_skybox_styles(api_key)  # You'd define this to fetch styles from your API
+        style_names = [style['name'] for style in styles]
+        
+        selected_style = st.selectbox("Choose a style:", style_names)
+        
+        if st.button("Generate Skybox"):
+            style_id = next((style['id'] for style in styles if style['name'] == selected_style), None)
+            if style_id:
+                image_url = generate_skybox(prompt, style_id, api_key)
+                if image_url:
+                    st.image(image_url, caption="Generated Skybox")
+                else:
+                    st.error("Skybox generation failed.")
