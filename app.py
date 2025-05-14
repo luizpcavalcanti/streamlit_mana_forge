@@ -431,9 +431,10 @@ elif mode == "Story Mode":
                 c.save()
                 pdf_buf.seek(0)
                 st.download_button("Download PDF", data=pdf_buf, file_name=f"story_{idx+1}.pdf", mime="application/pdf")
+                
  # --- WORLD BUILDER ---
 if mode == "World Builder":
-    tab1, tab2 = st.tabs(["Regions", "Journals and Stories"])
+    tab1, tab2 = st.tabs(["Regions", "Journal"])
     
     # --- REGIONS TAB ---
     with tab1:
