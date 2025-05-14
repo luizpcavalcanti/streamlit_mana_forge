@@ -525,11 +525,6 @@ if mode == "World Builder":
 
         # Quests Subtab
         with subtab5:
-            st.header("🗺️ Quests")
-            st.info("Quest management coming soon...")
-
-        # Parties Subtab
-        with subtab6:
             st.header("🪐 Skybox Generator")
     
         prompt = st.text_input("Describe your skybox:")
