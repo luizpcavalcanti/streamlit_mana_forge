@@ -165,22 +165,11 @@ def generate_story(character, npc, quest):
     return response['choices'][0]['message']['content']
 
 def generate_character_image(character, style="Standard"):
-    base_prompt = (
-        f"A full-body portrait of a {character['Gender']} {character['Race']} {character['Class']} "
-        f"with {character['Background']} vibes, heroic pose, detailed fantasy outfit."
-    )
-    if style == "8bit Style":
-        base_prompt += " pixelated sprite art, 8-bit game style"
-    elif style == "Anime Style":
-        base_prompt += " anime art style, cel-shaded, colorful background"
-
-    response = openai.images.generate(
-        model="gpt-image-1",  # or "dall-e-3" if available in your account
-        prompt=base_prompt,
-        size="1024x1024"
-    )
-
-    return response.data[0].url
+    base_prompt = f"A full-body portrait of a {character['Gender']} {character['Race']} {character['Class']} with {character['Background']} vibes, heroic pose, detailed fantasy outfit."
+    if style == "8bit Style": base_prompt += " pixelated sprite art, 8-bit game style"
+    if style == "Anime Style": base_prompt += " anime art style, cel-shaded, colorful background"
+    response = openai.Image.create(model="dall-e-3", prompt=base_prompt, size="1024x1024")
+    return response["data"][0]["url"]
 
 def generate_npc(generate_npc_text=True):
     if generate_npc_text:
@@ -442,10 +431,9 @@ elif mode == "Story Mode":
                 c.save()
                 pdf_buf.seek(0)
                 st.download_button("Download PDF", data=pdf_buf, file_name=f"story_{idx+1}.pdf", mime="application/pdf")
-                
  # --- WORLD BUILDER ---
 if mode == "World Builder":
-    tab1, tab2 = st.tabs(["Regions", "Journal"])
+    tab1, tab2 = st.tabs(["Regions", "Journals and Stories"])
     
     # --- REGIONS TAB ---
     with tab1:
