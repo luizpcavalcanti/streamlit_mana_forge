@@ -1,6 +1,7 @@
 import random
 import streamlit as st
 import json
+import openai
 import os
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
@@ -9,25 +10,11 @@ from reportlab.lib.utils import simpleSplit, ImageReader
 import base64
 import requests
 
-# OpenAI SDK v1+
-from openai import OpenAI
+# Load OpenAI key securely
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 
-# --- OpenAI client setup (supports Streamlit Secrets or env var) ---
-_api_key = None
-try:
-    # Streamlit Cloud / local .streamlit/secrets.toml
-    _api_key = st.secrets.get("OPENAI_API_KEY", None)
-except Exception:
-    pass
 
-if not _api_key:
-    _api_key = os.environ.get("OPENAI_API_KEY")
-
-client = OpenAI(api_key=_api_key) if _api_key else OpenAI()
-
-# ---------------------------------------------------------------
 # Initialize session state
-# ---------------------------------------------------------------
 if "characters" not in st.session_state:
     st.session_state.characters = []
 if "parties" not in st.session_state:
@@ -38,99 +25,52 @@ if "worlds" not in st.session_state:
     st.session_state.worlds = []
 if "journals" not in st.session_state:
     st.session_state.journals = []
-
+    
 # Character traits
-races = [
-    "Human", "Elf", "Dwarf", "Halfling", "Gnome", "Half-Orc", "Tiefling", "Dragonborn",
-    "Kobold", "Lizardfolk", "Minotaur", "Troll", "Vampire", "Satyr", "Undead", "Lich", "Werewolf"
-]
-classes = [
-    "Fighter", "Wizard", "Rogue", "Cleric", "Barbarian", "Sorcerer", "Bard", "Monk", "Druid",
-    "Ranger", "Paladin", "Warlock", "Artificer", "Blood Hunter", "Mystic", "Warden", "Berserker",
-    "Necromancer", "Trickster", "Beast Master", "Alchemist", "Pyromancer", "Dark Knight"
-]
-backgrounds = [
-    "Acolyte", "Folk Hero", "Sage", "Criminal", "Noble", "Hermit", "Outlander", "Entertainer",
-    "Artisan", "Sailor", "Soldier", "Charlatan", "Knight", "Pirate", "Spy", "Archaeologist",
-    "Gladiator", "Inheritor", "Haunted One", "Bounty Hunter", "Explorer", "Watcher", "Traveler",
-    "Phantom", "Vigilante"
-]
+races = ["Human", "Elf", "Dwarf", "Halfling", "Gnome", "Half-Orc", "Tiefling", "Dragonborn", "Kobold", "Lizardfolk", "Minotaur", "Troll", "Vampire", "Satyr", "Undead", "Lich", "Werewolf"]
+classes = ["Fighter", "Wizard", "Rogue", "Cleric", "Barbarian", "Sorcerer", "Bard", "Monk", "Druid", "Ranger", "Paladin", "Warlock", "Artificer", "Blood Hunter", "Mystic", "Warden", "Berserker", "Necromancer", "Trickster", "Beast Master", "Alchemist", "Pyromancer", "Dark Knight"]
+backgrounds = ["Acolyte", "Folk Hero", "Sage", "Criminal", "Noble", "Hermit", "Outlander", "Entertainer", "Artisan", "Sailor", "Soldier", "Charlatan", "Knight", "Pirate", "Spy", "Archaeologist", "Gladiator", "Inheritor", "Haunted One", "Bounty Hunter", "Explorer", "Watcher", "Traveler", "Phantom", "Vigilante"]
 genders = ["Male", "Female", "Non-binary"]
 image_styles = ["Standard", "8bit Style", "Anime Style"]
 
-# ---------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------
-
-def chat_complete(messages, model="gpt-4o-mini"):
-    """Wrapper for Chat Completions (OpenAI SDK v1). Returns string content."""
-    try:
-        resp = client.chat.completions.create(
-            model=model,
-            messages=messages,
-        )
-        return resp.choices[0].message.content
-    except Exception as e:
-        st.error("Chat completion error: " + str(e))
-        return ""
-
-
+# Generation functions
 def generate_character(name, gender, race, character_class, background):
-    return {
-        "Name": name,
-        "Gender": gender,
-        "Race": race,
-        "Class": character_class,
-        "Background": background,
-    }
-
+    return {"Name": name, "Gender": gender, "Race": race, "Class": character_class, "Background": background}
 
 def generate_character_history(character, generate_history=True):
-    if not generate_history:
-        return ""
-    prompt = (
-        f"Create a short backstory for a {character['Race']} {character['Class']} named {character['Name']}. "
-        f"They come from a {character['Background']} background. Include motivations and key events and locations, "
-        f"don't use existing names from reality."
-    )
-    return chat_complete([
-        {"role": "system", "content": "You are a creative storyteller."},
-        {"role": "user", "content": prompt},
-    ])
+    if generate_history:
+        prompt = f"Create a short backstory for a {character['Race']} {character['Class']} named {character['Name']}. They come from a {character['Background']} background. Include motivations and key events and locations, don't use existing names from reality"
+        response = openai.ChatCompletion.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "system", "content": "You are a creative storyteller, written in the style of George RR Martin, but not named as his characters."}, {"role": "user", "content": prompt}]
+        )
+        return response["choices"][0]["message"]["content"]
+    return ""
 
-
-# --- World Builder functions ---
+# World Builder Functions
 
 def generate_npc_names(count=10):
-    prompt = (
-        f"Generate {count} unique fantasy NPC names along with their roles and a brief background for each. "
-        f"Include variety like merchants, warriors, scholars, and mystics."
+    prompt = f"Generate {count} unique fantasy NPC names along with their roles and a brief background for each. Include some variety, like merchants, warriors, scholars, and mystics."
+    response = openai.ChatCompletion.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}]
     )
-    content = chat_complete([
-        {"role": "user", "content": prompt}
-    ])
-    lines = content.strip().split("\n") if content else []
+    lines = response["choices"][0]["message"]["content"].strip().split("\n")
     npcs = []
     for line in lines:
         if ": " in line:
             name, details = line.split(": ", 1)
-            if ". " in details:
-                role, background = details.split(". ", 1)
-            else:
-                role, background = details, ""
+            role, background = details.split(". ", 1)
             npcs.append({"name": name.strip(), "role": role.strip(), "backstory": background.strip()})
     return npcs
 
-
 def generate_location_names(count=10):
-    prompt = (
-        f"Generate {count} unique fantasy location names with a short description for each. "
-        f"Include different types: towns, ancient ruins, mystical forests, mountain strongholds."
+    prompt = f"Generate {count} unique fantasy location names with a short description for each. Include different types of places like towns, ancient ruins, mystical forests, and mountain strongholds."
+    response = openai.ChatCompletion.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}]
     )
-    content = chat_complete([
-        {"role": "user", "content": prompt}
-    ])
-    lines = content.strip().split("\n") if content else []
+    lines = response["choices"][0]["message"]["content"].strip().split("\n")
     locations = []
     for line in lines:
         if ": " in line:
@@ -143,17 +83,9 @@ def initialize_world(world_name):
     world = {"name": world_name, "regions": {}}
     for i in range(5):
         for j in range(5):
-            world["regions"][f"{i+1}-{j+1}"] = {
-                "name": f"Location {i+1}-{j+1}",
-                "characters": [],
-                "npcs": [],
-                "quests": [],
-                "capital": False,
-                "special_traits": [],
-            }
+            world["regions"][f"{i+1}-{j+1}"] = {"name": f"Location {i+1}-{j+1}", "characters": [], "npcs": [], "quests": [], "capital": False, "special_traits": []}
     st.session_state.worlds.append(world)
     return world
-
 
 def add_to_region(world_name, region_key, entry_type, entry):
     for world in st.session_state.worlds:
@@ -166,7 +98,6 @@ def save_journal(world_name, journal_text):
     with open(filename, "w", encoding="utf-8") as file:
         file.write(journal_text)
 
-
 def load_journal(world_name):
     filename = f"journal_{world_name}.txt"
     if os.path.exists(filename):
@@ -174,118 +105,77 @@ def load_journal(world_name):
             return file.read()
     return ""
 
-
 def generate_world_journal(world):
     journal_entries = []
     for region_key, region in world["regions"].items():
         entry = f"**{region['name']}**\n"
-
+        
+        # Include capital city info
         if region["capital"]:
             entry += "Capital Region\n"
-
+        
+        # Add special traits or lore to the region
         if region["special_traits"]:
             entry += "Special Traits:\n" + "\n".join([f"- {trait}" for trait in region["special_traits"]]) + "\n"
-
+        
+        # Add characters info
         if region["characters"]:
-            entry += (
-                "Characters:\n" +
-                "\n".join([f"- {c['Name']} ({c['Race']} {c['Class']}) - Last Seen: {c.get('last_action', 'Unknown')}" for c in region["characters"]]) +
-                "\n"
-            )
-
+            entry += "Characters:\n" + "\n".join([f"- {c['Name']} ({c['Race']} {c['Class']}) - Last Seen: {c.get('last_action', 'Unknown')}" for c in region["characters"]]) + "\n"
+        
+        # Add NPC info
         if region["npcs"]:
-            entry += (
-                "NPCs:\n" +
-                "\n".join([f"- {npc['name']} ({npc['role']}) - Last Seen: {npc.get('last_action', 'Unknown')}" for npc in region["npcs"]]) +
-                "\n"
-            )
-
+            entry += "NPCs:\n" + "\n".join([f"- {npc['name']} ({npc['role']}) - Last Seen: {npc.get('last_action', 'Unknown')}" for npc in region["npcs"]]) + "\n"
+        
+        # Add quests info
         if region["quests"]:
-            entry += (
-                "Quests:\n" +
-                "\n".join([f"- {quest['title']} - Last Update: {quest.get('last_action', 'Unknown')}" for quest in region["quests"]]) +
-                "\n"
-            )
-
-        # Enrich with AI lore if there is relevant content
+            entry += "Quests:\n" + "\n".join([f"- {quest['title']} - Last Update: {quest.get('last_action', 'Unknown')}" for quest in region["quests"]]) + "\n"
+        
+        # Use AI to generate regional content based on stories, characters, and quests
         if region["characters"] or region["quests"]:
             prompt = f"Generate a fantasy description of the region '{region['name']}' using the following elements:\n"
-            if region["characters"]:
-                prompt += "Characters:\n" + "\n".join([f"- {c['Name']} ({c['Race']} {c['Class']})" for c in region["characters"]]) + "\n"
-            if region["npcs"]:
-                prompt += "NPCs:\n" + "\n".join([f"- {npc['name']} ({npc['role']})" for npc in region["npcs"]]) + "\n"
-            if region["quests"]:
-                prompt += "Quests:\n" + "\n".join([f"- {quest['title']}: {quest['description']}" for quest in region["quests"]]) + "\n"
-            prompt += "Generate a rich, detailed story or lore for this region based on these elements, adding mystery, drama, or historical context."
-
-            content = chat_complete([
-                {"role": "system", "content": "You are a fantasy world-building assistant."},
-                {"role": "user", "content": prompt},
-            ])
-            entry += f"Lore/Story:\n{content}\n"
-
+            prompt += "Characters:\n" + "\n".join([f"- {c['Name']} ({c['Race']} {c['Class']})" for c in region["characters"]]) + "\n" if region["characters"] else ""
+            prompt += "NPCs:\n" + "\n".join([f"- {npc['name']} ({npc['role']})" for npc in region["npcs"]]) + "\n" if region["npcs"] else ""
+            prompt += "Quests:\n" + "\n".join([f"- {quest['title']}: {quest['description']}" for quest in region["quests"]]) + "\n" if region["quests"] else ""
+            prompt += f"Generate a rich, detailed story or lore for this region based on these elements, adding mystery, drama, or historical context.\n"
+            
+            # Get a response from the AI to enrich the region with lore and details
+            response = openai.ChatCompletion.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "system", "content": "You are a fantasy world-building assistant."},
+                          {"role": "user", "content": prompt}]
+            )
+            entry += f"Lore/Story:\n{response['choices'][0]['message']['content']}\n"
+        
         journal_entries.append(entry)
-
+    
     return "\n\n".join(journal_entries)
 
-
-# ---------------------------------------------------------------
-# Story & Content generation
-# ---------------------------------------------------------------
 
 def generate_story(character, npc, quest):
     prompt = (
         f"Write a short D&D style story paragraph involving the following quest, party, and NPC:\n"
         f"Character: {character['Name']} ({character['Race']} {character['Class']}, {character['Background']})\n"
         f"NPC: {npc['name']} - {npc['role']}, {npc['backstory']}\n"
-        f"Make it immersive in a high-fantasy tone."
+        f"Make it immersive and written like George RR Martin recounting an adventure."
     )
-    return chat_complete([
-        {"role": "system", "content": "You are a fantasy storyteller."},
-        {"role": "user", "content": prompt},
-    ])
-
-
-# ---------------------------------------------------------------
-# Images (OpenAI images.generate returns base64 by default)
-# ---------------------------------------------------------------
+    response = openai.ChatCompletion.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "system", "content": "You are a fantasy storyteller."}, {"role": "user", "content": prompt}]
+    )
+    return response['choices'][0]['message']['content']
 
 def generate_character_image(character, style="Standard"):
-    base_prompt = (
-        f"A full-body portrait of a {character['Gender']} {character['Race']} {character['Class']} "
-        f"with {character['Background']} vibes, heroic pose, detailed fantasy outfit, studio lighting."
-    )
-    if style == "8bit Style":
-        base_prompt += " Pixelated sprite art, 8-bit game style."
-    elif style == "Anime Style":
-        base_prompt += " Anime art style, cel-shaded, colorful background."
-
-    try:
-        resp = client.images.generate(
-            model="gpt-image-1",
-            prompt=base_prompt,
-            size="1024x1024",
-            # By default returns base64; we keep it and hand back a data URL for Streamlit
-            # n=1
-        )
-        b64_data = resp.data[0].b64_json
-        return f"data:image/png;base64,{b64_data}"
-    except Exception as e:
-        st.error("Image generation error: " + str(e))
-        return None
-
-
-# ---------------------------------------------------------------
-# NPCs & Quests
-# ---------------------------------------------------------------
+    base_prompt = f"A full-body portrait of a {character['Gender']} {character['Race']} {character['Class']} with {character['Background']} vibes, heroic pose, detailed fantasy outfit."
+    if style == "8bit Style": base_prompt += " pixelated sprite art, 8-bit game style"
+    if style == "Anime Style": base_prompt += " anime art style, cel-shaded, colorful background"
+    response = openai.Image.create(model="dall-e-3", prompt=base_prompt, size="1024x1024")
+    return response["data"][0]["url"]
 
 def generate_npc(generate_npc_text=True):
     if generate_npc_text:
-        prompt = "Generate a unique fantasy NPC name and their profession. Return 'Name, role' on one line."
-        content = chat_complete([
-            {"role": "user", "content": prompt}
-        ])
-        content = (content or "Unknown, merchant").strip()
+        prompt = "Generate a unique fantasy NPC name and their profession."
+        response = openai.ChatCompletion.create(model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
+        content = response["choices"][0]["message"]["content"].strip()
         if ", " in content:
             name, role = content.split(", ", 1)
         else:
@@ -298,70 +188,44 @@ def generate_npc(generate_npc_text=True):
 
 def generate_quest(generate_quest_text=True):
     if generate_quest_text:
-        prompt = "Create a fantasy quest with a title on the first line and a short description on the next line."
-        content = chat_complete([
-            {"role": "user", "content": prompt}
-        ])
-        parts = (content or "Untitled Quest\nA mysterious quest awaits.").strip().split("\n", 1)
+        prompt = "Create a fantasy quest with a title and short description."
+        response = openai.ChatCompletion.create(model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
+        parts = response["choices"][0]["message"]["content"].strip().split("\n", 1)
         title = parts[0]
         description = parts[1] if len(parts) > 1 else "A mysterious quest awaits."
     else:
         title, description = "Untitled Quest", "No description provided."
     return {"title": title, "description": description}
 
-
-# ---------------------------------------------------------------
-# PDF helpers
-# ---------------------------------------------------------------
-
-def download_image(image_url_or_data):
-    """
-    Accepts either an HTTP(S) URL or a base64 data URL (data:image/png;base64,...)
-    and returns a ReportLab ImageReader or None.
-    """
+def download_image(image_url):
     try:
-        if not image_url_or_data:
-            return None
-        if isinstance(image_url_or_data, bytes):
-            return ImageReader(BytesIO(image_url_or_data))
-        s = str(image_url_or_data)
-        if s.startswith("data:image") and ";base64," in s:
-            b64_part = s.split(",", 1)[1]
-            raw = base64.b64decode(b64_part)
-            return ImageReader(BytesIO(raw))
-        # Fallback: treat as URL
-        resp = requests.get(s, timeout=20)
-        resp.raise_for_status()
-        return ImageReader(BytesIO(resp.content))
-    except Exception:
+        response = requests.get(image_url)
+        return ImageReader(BytesIO(response.content))
+    except:
         return None
 
-
-def draw_wrapped_text(c, text, x, y, max_width, line_height):
+def draw_wrapped_text(canvas, text, x, y, max_width, line_height):
     from reportlab.pdfbase.pdfmetrics import stringWidth
-    words = (text or "").split()
+    words = text.split()
     line = ""
     for word in words:
         test_line = f"{line} {word}".strip()
         if stringWidth(test_line, "Helvetica", 7) > max_width:
-            c.drawString(x, y, line)
+            canvas.drawString(x, y, line)
             y -= line_height
             line = word
         else:
             line = test_line
     if line:
-        c.drawString(x, y, line)
+        canvas.drawString(x, y, line)
         y -= line_height
     return y
-
 
 def create_pdf(character, npc, quest, images):
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=letter)
     x, y = 50, 750
-    line_height = 12
-    max_width = 500
-
+    line_height = 12; max_width = 500
     def section(title, content):
         nonlocal y
         c.setFont("Helvetica-Bold", 10)
@@ -370,7 +234,6 @@ def create_pdf(character, npc, quest, images):
         c.setFont("Helvetica", 8)
         y = draw_wrapped_text(c, content, x, y, max_width, line_height)
         y -= line_height
-
     section("Character Info", f"{character['Name']} ({character['Gender']}, {character['Race']}, {character['Class']})")
     section("Background", character['Background'])
     section("History", character.get('History', ''))
@@ -378,35 +241,25 @@ def create_pdf(character, npc, quest, images):
     section("NPC Backstory", npc['backstory'])
     section("Quest", quest['title'])
     section("Quest Description", quest['description'])
-
     for url in images:
         img = download_image(url)
         if img:
-            if y - 270 < 0:
-                c.showPage()
-                y = 750
+            if y - 270 < 0: c.showPage(); y = 750
             c.drawImage(img, x, y - 400, width=400, height=400, preserveAspectRatio=True)
             y -= 420
-
-    c.showPage()
-    c.save()
-    buffer.seek(0)
+    c.showPage(); c.save(); buffer.seek(0)
     return buffer
 
-
 def save_to_json(character, npc, quest, file_name="character_data.json"):
-    with open(file_name, 'w', encoding='utf-8') as f:
-        json.dump({"character": character, "npc": npc, "quest": quest}, f, indent=4, ensure_ascii=False)
-
-
-# ---------------------------------------------------------------
+    with open(file_name, 'w') as f:
+        json.dump({"character": character, "npc": npc, "quest": quest}, f, indent=4)
+        
 # --- MAIN UI ---
-# ---------------------------------------------------------------
-
 st.title("🎭 Mana Forge Character Generator & Toolkit", anchor="title")
 mode = st.sidebar.radio("Select Mode:", ["Character", "Party", "Story Mode", "World Builder"])
 
-# -------------------- Character mode --------------------
+
+# Character mode
 if mode == "Character":
     name = st.text_input("Enter character name:")
     selected_race = st.selectbox("Select race:", races)
@@ -430,45 +283,24 @@ if mode == "Character":
         if not name.strip():
             st.warning("Please enter a name.")
         else:
+            # Handle auto-generation inside the button press
             if auto_generate:
                 character_class = random.choice(classes)
                 background = random.choice(backgrounds)
 
             char = generate_character(name, selected_gender, selected_race, character_class, background)
             char["History"] = generate_character_history(char, generate_history)
-
-            image_urls = []
-            main_img = generate_character_image(char, selected_style)
-            if main_img:
-                image_urls.append(main_img)
-            if generate_turnaround:
-                img2 = generate_character_image(char, selected_style)
-                if img2:
-                    image_urls.append(img2)
-            if generate_location:
-                img3 = generate_character_image(char, selected_style)
-                if img3:
-                    image_urls.append(img3)
+            image_urls = [generate_character_image(char, selected_style)]
+            if generate_turnaround: image_urls.append(generate_character_image(char, selected_style))
+            if generate_location: image_urls.append(generate_character_image(char, selected_style))
             if generate_extra:
-                img4 = generate_character_image(char, selected_style)
-                if img4:
-                    image_urls.append(img4)
-                img5 = generate_character_image(char, selected_style)
-                if img5:
-                    image_urls.append(img5)
-
+                image_urls.append(generate_character_image(char, selected_style))
+                image_urls.append(generate_character_image(char, selected_style))
             npc = generate_npc(generate_npc_text)
             quest = generate_quest(generate_quest_text)
-
-            st.session_state.characters.append({
-                "character": char,
-                "npc": npc,
-                "quest": quest,
-                "images": image_urls,
-            })
+            st.session_state.characters.append({"character": char, "npc": npc, "quest": quest, "images": image_urls})
             st.success(f"Character '{char['Name']}' Created!")
 
-    # Display generated characters
     for i, data in enumerate(st.session_state.characters):
         ch, npc, quest, imgs = data['character'], data['npc'], data['quest'], data['images']
         tabs = st.tabs(["Info", "History", "NPC", "Quests", "Images", "Export"])
@@ -484,18 +316,12 @@ if mode == "Character":
             st.write(quest['description'])
         with tabs[4]:
             for url in imgs:
-                if url:
-                    st.image(url, use_container_width=True)
+                st.image(url, use_container_width=True)
         with tabs[5]:
-            st.download_button(
-                "Download JSON",
-                data=json.dumps({"character": ch, "npc": npc, "quest": quest}, ensure_ascii=False, indent=2),
-                file_name=f"{ch['Name']}.json",
-            )
+            st.download_button("Download JSON", data=json.dumps({"character": ch, "npc": npc, "quest": quest}), file_name=f"{ch['Name']}.json")
             pdf_buf = create_pdf(ch, npc, quest, imgs)
             st.download_button("Download PDF", data=pdf_buf, file_name=f"{ch['Name']}.pdf", mime="application/pdf")
-
-# -------------------- Party mode --------------------
+# Party mode
 elif mode == "Party":
     st.header("🧑‍🤝‍🧑 Party Builder")
     if len(st.session_state.characters) < 2:
@@ -503,45 +329,51 @@ elif mode == "Party":
     else:
         options = [f"{i+1}. {d['character']['Name']}" for i, d in enumerate(st.session_state.characters)]
         selected = st.multiselect("Select party members:", options)
-
+        
         if st.button("Form Party") and selected:
             idxs = [options.index(s) for s in selected]
             members = [st.session_state.characters[i] for i in idxs]
             names = ", ".join([m['character']['Name'] for m in members])
-            story = chat_complete([
-                {"role": "user", "content": f"Write a group story for party members: {names}."}
-            ])
+            response = openai.ChatCompletion.create(
+                model="gpt-4o-mini", 
+                messages=[{"role": "user", "content": f"Write a group story for party members: {names}."}]
+            )
+            story = response['choices'][0]['message']['content']
             st.session_state.parties.append({"members": members, "story": story})
             st.success("Party Created!")
-
+        
         for idx, party in enumerate(st.session_state.parties):
             exp = st.expander(f"Party {idx+1}: {', '.join([m['character']['Name'] for m in party['members']])}")
             with exp:
                 subtabs = st.tabs(["Overview", "Story", "Export"])
-
+                
+                # Overview Tab
                 with subtabs[0]:
                     for m in party['members']:
                         st.write(m['character']['Name'])
-
+                
+                # Story Tab
                 with subtabs[1]:
                     st.write(party['story'])
+                    # Use a form for the button to handle state correctly
                     with st.form(f"story_form_{idx}"):
                         if st.form_submit_button("Generate New Story"):
                             names = ", ".join([m['character']['Name'] for m in party['members']])
                             existing_story = party['story']
-                            continuation = chat_complete([
-                                {"role": "user", "content": f"Continue the following story for the party members {names}:\n\n{existing_story}"}
-                            ])
-                            party['story'] += "\n\n" + (continuation or "")
-                            st.session_state.parties[idx] = party
+                            response = openai.ChatCompletion.create(
+                            model="gpt-4o-mini", 
+                            messages=[
+                            {"role": "user", "content": f"Continue the following story for the party members {names}:\n\n{existing_story}"}
+                                ]
+                            )
+                            new_story = response['choices'][0]['message']['content']
+                            party['story'] += "\n\n" + new_story  # Append the new story
+                            st.session_state.parties[idx] = party  # Update the party in the session state
                             st.success("New story generated and appended!")
-
+                
+                # Export Tab
                 with subtabs[2]:
-                    st.download_button(
-                        "Download Party JSON",
-                        data=json.dumps(party, ensure_ascii=False, indent=2),
-                        file_name=f"party_{idx+1}.json",
-                    )
+                    st.download_button("Download Party JSON", data=json.dumps(party), file_name=f"party_{idx+1}.json")
                     buf = BytesIO()
                     c = canvas.Canvas(buf, pagesize=letter)
                     c.setFont("Helvetica", 8)
@@ -552,7 +384,7 @@ elif mode == "Party":
                     buf.seek(0)
                     st.download_button("Download Party PDF", data=buf, file_name=f"party_{idx+1}.pdf", mime="application/pdf")
 
-# -------------------- STORY MODE / Quest Creator --------------------
+# --- STORY MODE/Quest Creator TAB ---
 elif mode == "Story Mode":
     st.header("📜 Quest Creator")
 
@@ -572,8 +404,8 @@ elif mode == "Story Mode":
             st.session_state.stories.append({
                 "character": selected_character,
                 "npc": selected_npc,
-                "quest": selected_quest,
-                "story": story_text,
+                "quest": selected_quest,  # Include quest
+                "story": story_text
             })
             st.success("Quest generated!")
 
@@ -585,8 +417,8 @@ elif mode == "Story Mode":
                 st.markdown(f"**NPC**: {entry['npc']['name']} - {entry['npc']['role']}")
                 st.markdown(f"**Quest**: {entry['quest']['title']}")
                 st.text_area("Story Text", value=entry['story'], height=200)
-
-                story_json = json.dumps(entry, indent=4, ensure_ascii=False)
+                
+                story_json = json.dumps(entry, indent=4)
                 st.download_button("Download JSON", story_json, file_name=f"story_{idx+1}.json")
 
                 # PDF export for story
@@ -599,11 +431,11 @@ elif mode == "Story Mode":
                 c.save()
                 pdf_buf.seek(0)
                 st.download_button("Download PDF", data=pdf_buf, file_name=f"story_{idx+1}.pdf", mime="application/pdf")
-
-# -------------------- WORLD BUILDER --------------------
+                
+ # --- WORLD BUILDER ---
 if mode == "World Builder":
     tab1, tab2 = st.tabs(["Regions", "Journal"])
-
+    
     # --- REGIONS TAB ---
     with tab1:
         world_name = st.text_input("Enter Region Name:")
@@ -647,7 +479,7 @@ if mode == "World Builder":
     # --- JOURNALS AND STORIES TAB ---
     with tab2:
         subtab1, subtab2, subtab3, subtab4, subtab5, subtab6 = st.tabs(["Journals", "Stories", "Characters", "NPCs", "Quests", "Parties"])
-
+        
         # Journals Subtab
         with subtab1:
             st.header("📓 Journals")
@@ -686,6 +518,7 @@ if mode == "World Builder":
             else:
                 st.info("No characters created yet.")
 
+
         # NPCs Subtab
         with subtab4:
             st.header("🗣️ NPCs")
@@ -695,8 +528,9 @@ if mode == "World Builder":
         with subtab5:
             st.header("🪐 Quests")
             st.info("Quests management coming soon...")
-
+         
         # Parties Subtab
         with subtab6:
             st.header("🪐 Parties")
             st.info("Parties management coming soon...")
+       
