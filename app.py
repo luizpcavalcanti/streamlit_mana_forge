@@ -104,7 +104,48 @@ def load_journal(world_name):
         with open(filename, "r", encoding="utf-8") as file:
             return file.read()
     return ""
+    
+def create_journal_pdf(journal_text, characters):
+    buffer = BytesIO()
+    c = canvas.Canvas(buffer, pagesize=letter)
+    x, y = 50, 750
+    line_height = 12
+    max_width = 500
 
+    def section(title, content):
+        nonlocal y
+        c.setFont("Helvetica-Bold", 10)
+        c.drawString(x, y, title)
+        y -= line_height
+        c.setFont("Helvetica", 8)
+        for line in simpleSplit(content, "Helvetica", 8, max_width):
+            c.drawString(x, y, line)
+            y -= line_height
+        y -= line_height
+
+    # Journal text
+    section("World Journal", journal_text)
+
+    # Images of characters
+    for ch in characters:
+        c.setFont("Helvetica-Bold", 9)
+        c.drawString(x, y, f"Character: {ch['character']['Name']}")
+        y -= line_height
+        for url in ch["images"]:
+            img = download_image(url)
+            if img:
+                if y - 300 < 0:
+                    c.showPage()
+                    y = 750
+                c.drawImage(img, x, y - 250, width=250, height=250, preserveAspectRatio=True)
+                y -= 270
+        y -= line_height
+
+    c.showPage()
+    c.save()
+    buffer.seek(0)
+    return buffer
+    
 def generate_world_journal(world):
     journal_entries = []
     for region_key, region in world["regions"].items():
@@ -406,7 +447,7 @@ if mode == "World Builder":
                     st.image(url, use_container_width=True)
     
         # Save / Export
-        col1, col2 = st.columns([1,1])
+        col1, col2, col3 = st.columns([1,1,1])
         with col1:
             if st.button("Save Journal"):
                 save_journal("world", journal_text)
@@ -414,6 +455,9 @@ if mode == "World Builder":
                 st.success("Journal saved!")
         with col2:
             st.download_button("Download Journal (TXT)", data=journal_text, file_name="world_journal.txt", mime="text/plain")
+        with col3:
+            pdf_buf = create_journal_pdf(journal_text, st.session_state.characters)
+            st.download_button("Download Journal (PDF)", data=pdf_buf, file_name="world_journal.pdf", mime="application/pdf")
 
      # --- REGIONS TAB ---
     with tab3:
