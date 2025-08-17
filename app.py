@@ -322,73 +322,93 @@ if mode == "Character":
             pdf_buf = create_pdf(ch, npc, quest, imgs)
             st.download_button("Download PDF", data=pdf_buf, file_name=f"{ch['Name']}.pdf", mime="application/pdf")
 
-   # --- WORLD BUILDER ---
+# --- WORLD BUILDER ---
 if mode == "World Builder":
     tab1, tab2 = st.tabs(["Party / Infinite Story Mode", "Journal"])
 
     # --- PARTY / INFINITE STORY TAB ---
     with tab1:
         st.header("🧑‍🤝‍🧑 Party / Infinite Story Mode")
-        if len(st.session_state.characters) < 1:
+        if not st.session_state.characters:
             st.warning("Create at least 1 character to form a party.")
         else:
             options = [f"{i+1}. {d['character']['Name']}" for i, d in enumerate(st.session_state.characters)]
             selected = st.multiselect("Select party members:", options)
-            
+
             if st.button("Generate / Continue Party Story") and selected:
                 idxs = [options.index(s) for s in selected]
                 members = [st.session_state.characters[i] for i in idxs]
                 names = ", ".join([m['character']['Name'] for m in members])
-                # Existing story if party exists
-                existing_story = ""
+
+                # Check if party exists
+                existing_party = None
                 for party in st.session_state.parties:
                     party_names = [m['character']['Name'] for m in party['members']]
                     if set(names.split(", ")) == set(party_names):
-                        existing_story = party['story']
+                        existing_party = party
                         break
+
+                # Prepare prompt with existing story
+                existing_story = existing_party['story'] if existing_party else ""
+                prompt = f"Continue the story for party members: {names}.\n\n{existing_story}"
+
                 response = openai.ChatCompletion.create(
                     model="gpt-4o-mini",
-                    messages=[{"role": "user", "content": f"Continue the story for party members: {names}.\n\n{existing_story}"}]
+                    messages=[{"role": "user", "content": prompt}]
                 )
                 story_text = response['choices'][0]['message']['content']
-                
-                # Append or create party
-                party_found = False
-                for party in st.session_state.parties:
-                    party_names = [m['character']['Name'] for m in party['members']]
-                    if set(names.split(", ")) == set(party_names):
-                        party['story'] += "\n\n" + story_text
-                        party_found = True
-                        break
-                if not party_found:
+
+                # Update or create party
+                if existing_party:
+                    existing_party['story'] += "\n\n" + story_text
+                else:
                     st.session_state.parties.append({"members": members, "story": story_text})
+
                 st.success("Story generated and appended!")
-                
-                # Display
-                for idx, party in enumerate(st.session_state.parties):
-                    exp = st.expander(f"Party {idx+1}: {', '.join([m['character']['Name'] for m in party['members']])}")
-                    with exp:
-                        st.text_area("Story", value=party['story'], height=200)
+
+            # Display all party stories
+            for idx, party in enumerate(st.session_state.parties):
+                exp = st.expander(f"Party {idx+1}: {', '.join([m['character']['Name'] for m in party['members']])}", expanded=True)
+                with exp:
+                    st.text_area("Story", value=party['story'], height=200)
 
     # --- JOURNAL TAB ---
     with tab2:
         st.header("📓 World Journal")
+
+        # Build journal dynamically
         journal_entries = []
 
+        # Characters
         if st.session_state.characters:
             journal_entries.append("**Characters:**")
             for ch in st.session_state.characters:
                 c = ch['character']
                 journal_entries.append(f"- {c['Name']} ({c['Race']} {c['Class']}) Background: {c['Background']}")
-        
+
+        # Party Stories
         if st.session_state.parties:
             journal_entries.append("\n**Party Stories:**")
             for idx, party in enumerate(st.session_state.parties):
                 journal_entries.append(f"\nParty {idx+1}: {', '.join([m['character']['Name'] for m in party['members']])}")
                 journal_entries.append(party['story'])
 
-        full_journal = "\n".join(journal_entries)
-        st.text_area("World Journal", value=full_journal, height=400)
-        if st.button("Save Journal"):
-            save_journal("world", full_journal)
-            st.success("Journal saved!")
+        # Store journal in session state
+        st.session_state.journal_text = "\n".join(journal_entries)
+        journal_text = st.text_area("World Journal", value=st.session_state.journal_text, height=400)
+
+        # Save / Export
+        col1, col2, col3 = st.columns([1,1,1])
+        with col1:
+            if st.button("Save Journal"):
+                save_journal("world", journal_text)
+                st.session_state.journal_text = journal_text
+                st.success("Journal saved!")
+        with col2:
+            if st.button("Load Journal"):
+                loaded = load_journal("world")
+                st.session_state.journal_text = loaded
+                st.experimental_rerun()
+        with col3:
+            st.download_button("Download Journal (TXT)", data=journal_text, file_name="world_journal.txt", mime="text/plain")
+
