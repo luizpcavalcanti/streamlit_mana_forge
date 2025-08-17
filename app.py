@@ -627,7 +627,7 @@ if len(st.session_state.regions) > 5:
                 data=pdf_buffer,
                 file_name="macro_region.pdf",
                 mime="application/pdf"
-
+            )
         # 🔽 DOWNLOAD ALL REGIONS
         if st.session_state.regions:
             regions_json = json.dumps(st.session_state.regions, indent=2, ensure_ascii=False)
