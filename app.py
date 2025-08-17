@@ -372,31 +372,39 @@ if mode == "World Builder":
                 with exp:
                     st.text_area("Story", value=party['story'], height=200)
 
-    # --- JOURNAL TAB ---
+        # --- JOURNAL TAB ---
     with tab2:
         st.header("📓 World Journal")
-
+    
         # Build journal dynamically
         journal_entries = []
-
+    
         # Characters
         if st.session_state.characters:
             journal_entries.append("**Characters:**")
             for ch in st.session_state.characters:
                 c = ch['character']
                 journal_entries.append(f"- {c['Name']} ({c['Race']} {c['Class']}) Background: {c['Background']}")
-
+    
         # Party Stories
         if st.session_state.parties:
             journal_entries.append("\n**Party Stories:**")
             for idx, party in enumerate(st.session_state.parties):
                 journal_entries.append(f"\nParty {idx+1}: {', '.join([m['character']['Name'] for m in party['members']])}")
                 journal_entries.append(party['story'])
-
+    
         # Store journal in session state
         st.session_state.journal_text = "\n".join(journal_entries)
         journal_text = st.text_area("World Journal", value=st.session_state.journal_text, height=400)
-
+    
+        # Show all character images here
+        if st.session_state.characters:
+            st.subheader("Character Images")
+            for ch in st.session_state.characters:
+                st.markdown(f"**{ch['character']['Name']}**")
+                for url in ch['images']:
+                    st.image(url, use_container_width=True)
+    
         # Save / Export
         col1, col2 = st.columns([1,1])
         with col1:
@@ -406,6 +414,7 @@ if mode == "World Builder":
                 st.success("Journal saved!")
         with col2:
             st.download_button("Download Journal (TXT)", data=journal_text, file_name="world_journal.txt", mime="text/plain")
+
   # --- REGIONS TAB ---
     with tab3:
         st.header("🌍 AI-Generated Regions")
