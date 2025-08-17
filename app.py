@@ -542,36 +542,91 @@ if mode == "World Builder":
                 else:
                     st.write(desc)
     
-        # 🔽 Macro-Region synthesis if more than 5 regions
-        if len(st.session_state.regions) > 5:
-            if st.button("🔗 Synthesize Macro-Region"):
-                all_regions = st.session_state.regions
+ # 🔽 Macro-Region synthesis if more than 5 regions
+if len(st.session_state.regions) > 5:
+    if st.button("🔗 Synthesize Macro-Region"):
+        all_regions = st.session_state.regions
+
+        # Merge regions with same name into one
+        merged = {}
+        for r in all_regions:
+            name = r.get("name", "Unknown Region")
+            desc = r.get("description", {})
+            if name not in merged:
+                merged[name] = {"name": name, "descriptions": []}
+            merged[name]["descriptions"].append(desc)
+
+        macro_region = {
+            "name": "Macro-Region",
+            "regions": list(merged.values())
+        }
+
+        # Store in session
+        st.session_state.macro_region = macro_region
+        st.success("Macro-Region created!")
+
+    # Show macro-region and add export options
+    if "macro_region" in st.session_state:
+        exp = st.expander("🌐 Macro-Region", expanded=True)
+        with exp:
+            # Show content
+            for r in st.session_state.macro_region["regions"]:
+                st.subheader(r["name"])
+                for d in r["descriptions"]:
+                    st.json(d)
     
-                # Merge regions with same name into one
-                merged = {}
-                for r in all_regions:
-                    name = r.get("name", "Unknown Region")
-                    desc = r.get("description", {})
-                    if name not in merged:
-                        merged[name] = {"name": name, "descriptions": []}
-                    merged[name]["descriptions"].append(desc)
+            # Export Macro-Region JSON
+            macro_json = json.dumps(st.session_state.macro_region, indent=2, ensure_ascii=False)
+            st.download_button(
+                "📥 Download Macro-Region JSON",
+                data=macro_json,
+                file_name="macro_region.json",
+                mime="application/json"
+            )
     
-                macro_region = {
-                    "name": "Macro-Region",
-                    "regions": list(merged.values())
-                }
+            # Export Macro-Region PDF
+            def create_macro_pdf(macro_region):
+                from reportlab.pdfgen import canvas
+                from reportlab.lib.pagesizes import letter
+                from reportlab.lib.utils import simpleSplit
+                buffer = BytesIO()
+                c = canvas.Canvas(buffer, pagesize=letter)
+                width, height = letter
+                x, y = 50, height - 50
+                c.setFont("Helvetica-Bold", 14)
+                c.drawString(x, y, "Macro-Region Journal")
+                y -= 30
+                c.setFont("Helvetica", 10)
     
-                # Store in session
-                st.session_state.macro_region = macro_region
-                st.success("Macro-Region created!")
+                def draw_text(text, x, y, max_width):
+                    lines = simpleSplit(text, "Helvetica", 10, max_width)
+                    for line in lines:
+                        c.drawString(x, y, line)
+                        y -= 12
+                        if y < 50:
+                            c.showPage()
+                            c.setFont("Helvetica", 10)
+                            y = height - 50
+                    return y
     
-            if "macro_region" in st.session_state:
-                exp = st.expander("🌐 Macro-Region", expanded=True)
-                with exp:
-                    for r in st.session_state.macro_region["regions"]:
-                        st.subheader(r["name"])
-                        for d in r["descriptions"]:
-                            st.json(d)
+                for region in macro_region["regions"]:
+                    c.setFont("Helvetica-Bold", 12)
+                    y = draw_text(f"Region: {region['name']}", x, y, width - 100)
+                    c.setFont("Helvetica", 10)
+                    for desc in region["descriptions"]:
+                        desc_json = json.dumps(desc, indent=2, ensure_ascii=False)
+                        y = draw_text(desc_json, x + 20, y, width - 120)
+    
+                c.save()
+                buffer.seek(0)
+                return buffer
+    
+            pdf_buffer = create_macro_pdf(st.session_state["macro_region"])
+            st.download_button(
+                "📖 Download Macro-Region PDF",
+                data=pdf_buffer,
+                file_name="macro_region.pdf",
+                mime="application/pdf"
 
         # 🔽 DOWNLOAD ALL REGIONS
         if st.session_state.regions:
