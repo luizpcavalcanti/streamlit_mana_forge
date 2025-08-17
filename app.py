@@ -407,21 +407,11 @@ if mode == "World Builder":
         with col2:
             st.download_button("Download Journal (TXT)", data=journal_text, file_name="world_journal.txt", mime="text/plain")
   
-    # --- REGIONS TAB ---
+     # --- REGIONS TAB ---
     with tab3:
         st.header("🌍 AI-Generated Regions")
         if "regions" not in st.session_state:
             st.session_state.regions = []
-    
-        def extract_json_from_text(text):
-            import re
-            try:
-                match = re.search(r'\{.*\}', text, flags=re.DOTALL)
-                if match:
-                    return json.loads(match.group())
-            except json.JSONDecodeError:
-                pass
-            return None
     
         if st.button("Create New Region from Journal"):
             journal_text = st.session_state.journal_text
@@ -445,50 +435,73 @@ if mode == "World Builder":
             )
             content = response['choices'][0]['message']['content'].strip()
     
-            # Extract JSON safely
-            region_data = extract_json_from_text(content)
-            if region_data:
+            # Robust JSON parsing
+            try:
+                region_data = json.loads(content)
                 region_name = region_data.get("name", "Unknown Region")
                 region_description = region_data.get("description", {})
-            else:
+            except json.JSONDecodeError:
                 region_name = "Unknown Region"
-                region_description = content
+                region_description = {"terrain":"N/A", "climate":"N/A", "special_features":[], "quests":[], "npcs":[]}  # fallback
     
             st.session_state.regions.append({"name": region_name, "description": region_description})
             st.success(f"Region '{region_name}' created!")
     
-        # Display all regions
+        # Display all regions safely
         for idx, region in enumerate(st.session_state.regions):
             exp_name = region.get("name", f"Region {idx+1}")
             exp = st.expander(exp_name, expanded=False)
             with exp:
                 desc = region.get("description", {})
-                if isinstance(desc, dict):
-                    st.markdown(f"**Terrain:** {desc.get('terrain','N/A')}")
-                    st.markdown(f"**Climate:** {desc.get('climate','N/A')}")
-                    
-                    if 'special_features' in desc:
-                        st.markdown("**Special Features:**")
-                        for sf in desc['special_features']:
-                            if isinstance(sf, dict):
-                                st.markdown(f"- **{sf.get('name','')}**: {sf.get('description','')}")
-                            else:
-                                st.markdown(f"- {sf}")
-                                
-                    if 'quests' in desc:
-                        st.markdown("**Quests:**")
-                        for q in desc['quests']:
-                            if isinstance(q, dict):
-                                st.markdown(f"- **{q.get('title','')}**: {q.get('description','')}")
-                            else:
-                                st.markdown(f"- {q}")
-                                
-                    if 'npcs' in desc:
-                        st.markdown("**NPCs:**")
-                        for npc in desc['npcs']:
-                            if isinstance(npc, dict):
-                                st.markdown(f"- **{npc.get('name','')}** ({npc.get('role','')}): {npc.get('description','')}")
-                            else:
-                                st.markdown(f"- {npc}")
-                else:
-                    st.write(desc)
+    
+                # Normalize special_features
+                sf_list = []
+                sf_raw = desc.get("special_features", [])
+                if isinstance(sf_raw, list):
+                    for sf in sf_raw:
+                        if isinstance(sf, dict):
+                            sf_list.append(sf)
+                        elif isinstance(sf, str):
+                            sf_list.append({"name": sf, "description": ""})
+                elif isinstance(sf_raw, str):
+                    sf_list.append({"name": sf_raw, "description": ""})
+    
+                # Normalize quests
+                q_list = []
+                q_raw = desc.get("quests", [])
+                if isinstance(q_raw, list):
+                    for q in q_raw:
+                        if isinstance(q, dict):
+                            q_list.append(q)
+                        elif isinstance(q, str):
+                            q_list.append({"title": q, "description": ""})
+                elif isinstance(q_raw, str):
+                    q_list.append({"title": q_raw, "description": ""})
+    
+                # Normalize npcs
+                npc_list = []
+                npc_raw = desc.get("npcs", [])
+                if isinstance(npc_raw, list):
+                    for npc in npc_raw:
+                        if isinstance(npc, dict):
+                            npc_list.append(npc)
+                        elif isinstance(npc, str):
+                            npc_list.append({"name": npc, "role": "", "description": ""})
+                elif isinstance(npc_raw, str):
+                    npc_list.append({"name": npc_raw, "role": "", "description": ""})
+    
+                # Display
+                st.markdown(f"**Terrain:** {desc.get('terrain','N/A')}")
+                st.markdown(f"**Climate:** {desc.get('climate','N/A')}")
+                if sf_list:
+                    st.markdown("**Special Features:**")
+                    for sf in sf_list:
+                        st.markdown(f"- **{sf['name']}**: {sf['description']}")
+                if q_list:
+                    st.markdown("**Quests:**")
+                    for q in q_list:
+                        st.markdown(f"- **{q['title']}**: {q['description']}")
+                if npc_list:
+                    st.markdown("**NPCs:**")
+                    for npc in npc_list:
+                        st.markdown(f"- **{npc['name']}** ({npc['role']}): {npc['description']}")
