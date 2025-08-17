@@ -406,7 +406,7 @@ if mode == "World Builder":
                 st.success("Journal saved!")
         with col2:
             st.download_button("Download Journal (TXT)", data=journal_text, file_name="world_journal.txt", mime="text/plain")
- 
+  
     # --- REGIONS TAB ---
     with tab3:
         st.header("🌍 AI-Generated Regions")
@@ -466,18 +466,29 @@ if mode == "World Builder":
                 if isinstance(desc, dict):
                     st.markdown(f"**Terrain:** {desc.get('terrain','N/A')}")
                     st.markdown(f"**Climate:** {desc.get('climate','N/A')}")
+                    
                     if 'special_features' in desc:
                         st.markdown("**Special Features:**")
                         for sf in desc['special_features']:
-                            st.markdown(f"- **{sf.get('name','')}**: {sf.get('description','')}")
+                            if isinstance(sf, dict):
+                                st.markdown(f"- **{sf.get('name','')}**: {sf.get('description','')}")
+                            else:
+                                st.markdown(f"- {sf}")
+                                
                     if 'quests' in desc:
                         st.markdown("**Quests:**")
                         for q in desc['quests']:
-                            st.markdown(f"- **{q.get('title','')}**: {q.get('description','')}")
+                            if isinstance(q, dict):
+                                st.markdown(f"- **{q.get('title','')}**: {q.get('description','')}")
+                            else:
+                                st.markdown(f"- {q}")
+                                
                     if 'npcs' in desc:
                         st.markdown("**NPCs:**")
                         for npc in desc['npcs']:
-                            st.markdown(f"- **{npc.get('name','')}** ({npc.get('role','')}): {npc.get('description','')}")
+                            if isinstance(npc, dict):
+                                st.markdown(f"- **{npc.get('name','')}** ({npc.get('role','')}): {npc.get('description','')}")
+                            else:
+                                st.markdown(f"- {npc}")
                 else:
                     st.write(desc)
-
