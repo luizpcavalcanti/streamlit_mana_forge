@@ -324,7 +324,7 @@ if mode == "Character":
 
 # --- WORLD BUILDER ---
 if mode == "World Builder":
-    tab1, tab2 = st.tabs(["Party / Infinite Story Mode", "Journal"])
+    tab1, tab2, tab3 = st.tabs(["Party / Infinite Story Mode", "Journal", "Regions"])
 
     # --- PARTY / INFINITE STORY TAB ---
     with tab1:
@@ -398,17 +398,44 @@ if mode == "World Builder":
         journal_text = st.text_area("World Journal", value=st.session_state.journal_text, height=400)
 
         # Save / Export
-        col1, col2, col3 = st.columns([1,1,1])
+        col1, col2 = st.columns([1,1])
         with col1:
             if st.button("Save Journal"):
                 save_journal("world", journal_text)
                 st.session_state.journal_text = journal_text
                 st.success("Journal saved!")
         with col2:
-            if st.button("Load Journal"):
-                loaded = load_journal("world")
-                st.session_state.journal_text = loaded
-                st.experimental_rerun()
-        with col3:
             st.download_button("Download Journal (TXT)", data=journal_text, file_name="world_journal.txt", mime="text/plain")
+
+    # --- REGIONS TAB ---
+    with tab3:
+        st.header("🌍 AI-Generated Regions")
+        if "regions" not in st.session_state:
+            st.session_state.regions = []
+
+        if st.button("Create New Region from Journal"):
+            prompt = (
+                f"Based on the following world journal, create a unique fantasy region. "
+                f"Include a region name and a detailed description/lore.\n\n{st.session_state.journal_text}"
+            )
+            response = openai.ChatCompletion.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}]
+            )
+            content = response['choices'][0]['message']['content'].strip()
+
+            # Simple parsing: first line as name, rest as description
+            lines = content.split("\n", 1)
+            region_name = lines[0].strip() if lines else "Unknown Region"
+            region_description = lines[1].strip() if len(lines) > 1 else "No description provided."
+
+            st.session_state.regions.append({"name": region_name, "description": region_description})
+            st.success(f"Region '{region_name}' created!")
+
+        # Display all regions
+        for idx, region in enumerate(st.session_state.regions):
+            exp = st.expander(f"{region['name']}", expanded=False)
+            with exp:
+                st.write(region['description'])
+
 
