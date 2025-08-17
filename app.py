@@ -406,29 +406,24 @@ if mode == "World Builder":
                 st.success("Journal saved!")
         with col2:
             st.download_button("Download Journal (TXT)", data=journal_text, file_name="world_journal.txt", mime="text/plain")
-
-   # --- REGIONS TAB ---
+    # --- REGIONS TAB ---
     with tab3:
         st.header("🌍 AI-Generated Regions")
         if "regions" not in st.session_state:
             st.session_state.regions = []
     
         if st.button("Create New Region from Journal"):
-            # Collect all relevant info
+            # Gather all relevant info
             journal_text = st.session_state.journal_text
-            all_npcs = []
-            all_quests = []
-            for ch_data in st.session_state.characters:
-                all_npcs.append(ch_data['npc'])
-                all_quests.append(ch_data['quest'])
-            
-            # Optional: include party stories too
+            all_npcs = [ch_data['npc'] for ch_data in st.session_state.characters]
+            all_quests = [ch_data['quest'] for ch_data in st.session_state.characters]
             party_stories = "\n\n".join([p['story'] for p in st.session_state.parties])
     
             prompt = (
-                f"Using the following world journal, quests, and NPCs, generate a unique fantasy region. "
-                f"Return a JSON object with 'name' and 'description'. Include terrain, climate, special features, "
-                f"and references to quests and NPCs. Make it immersive and detailed.\n\n"
+                f"Using the following world journal, NPCs, quests, and party stories, generate a unique fantasy region. "
+                f"Return a JSON object with the keys 'name' and 'description'. The 'description' should itself be a JSON object "
+                f"with keys: 'terrain', 'climate', 'special_features', 'quests', 'npcs'. Be immersive and detailed. "
+                f"ONLY RETURN A JSON OBJECT, DO NOT ADD ANY EXTRA TEXT.\n\n"
                 f"World Journal:\n{journal_text}\n\n"
                 f"NPCs:\n{json.dumps(all_npcs, indent=2)}\n\n"
                 f"Quests:\n{json.dumps(all_quests, indent=2)}\n\n"
@@ -441,24 +436,37 @@ if mode == "World Builder":
             )
             content = response['choices'][0]['message']['content'].strip()
     
-            # Try to parse JSON from AI response
+            # Robust JSON parsing
             try:
                 region_data = json.loads(content)
-                region_name = region_data.get("name", "Unknown Region")
-                region_description = region_data.get("description", "No description provided.")
-            except:
-                # Fallback if AI does not return valid JSON
-                lines = content.split("\n", 1)
-                region_name = lines[0].strip() if lines else "Unknown Region"
-                region_description = lines[1].strip() if len(lines) > 1 else "No description provided."
+            except json.JSONDecodeError:
+                st.error("AI did not return valid JSON. Cannot create region.")
+                region_data = {"name": "Unknown Region", "description": {}}
     
-            st.session_state.regions.append({"name": region_name, "description": region_description})
-            st.success(f"Region '{region_name}' created!")
+            st.session_state.regions.append(region_data)
+            st.success(f"Region '{region_data.get('name', 'Unknown')}' created!")
     
         # Display all regions
         for idx, region in enumerate(st.session_state.regions):
-            exp = st.expander(f"{region['name']}", expanded=False)
+            exp = st.expander(f"{region.get('name', 'Unknown Region')}", expanded=False)
             with exp:
-                st.write(region['description'])
+                desc = region.get('description', {})
+                if isinstance(desc, dict):
+                    st.markdown(f"**Terrain:** {desc.get('terrain','N/A')}")
+                    st.markdown(f"**Climate:** {desc.get('climate','N/A')}")
+                    if 'special_features' in desc:
+                        st.markdown("**Special Features:**")
+                        for sf in desc['special_features']:
+                            st.markdown(f"- **{sf.get('name','')}**: {sf.get('description','')}")
+                    if 'quests' in desc:
+                        st.markdown("**Quests:**")
+                        for q in desc['quests']:
+                            st.markdown(f"- **{q.get('title','')}**: {q.get('description','')}")
+                    if 'npcs' in desc:
+                        st.markdown("**NPCs:**")
+                        for npc in desc['npcs']:
+                            st.markdown(f"- **{npc.get('name','')}** ({npc.get('role','')}): {npc.get('description','')}")
+                else:
+                    st.write(desc)
 
 
