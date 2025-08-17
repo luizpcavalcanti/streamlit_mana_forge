@@ -406,12 +406,22 @@ if mode == "World Builder":
                 st.success("Journal saved!")
         with col2:
             st.download_button("Download Journal (TXT)", data=journal_text, file_name="world_journal.txt", mime="text/plain")
-
-      # --- REGIONS TAB ---
+ 
+    # --- REGIONS TAB ---
     with tab3:
         st.header("🌍 AI-Generated Regions")
         if "regions" not in st.session_state:
             st.session_state.regions = []
+    
+        def extract_json_from_text(text):
+            import re
+            try:
+                match = re.search(r'\{.*\}', text, flags=re.DOTALL)
+                if match:
+                    return json.loads(match.group())
+            except json.JSONDecodeError:
+                pass
+            return None
     
         if st.button("Create New Region from Journal"):
             journal_text = st.session_state.journal_text
@@ -435,14 +445,14 @@ if mode == "World Builder":
             )
             content = response['choices'][0]['message']['content'].strip()
     
-            # Robust JSON parsing
-            try:
-                region_data = json.loads(content)
+            # Extract JSON safely
+            region_data = extract_json_from_text(content)
+            if region_data:
                 region_name = region_data.get("name", "Unknown Region")
                 region_description = region_data.get("description", {})
-            except json.JSONDecodeError:
+            else:
                 region_name = "Unknown Region"
-                region_description = content  # fallback: raw text
+                region_description = content
     
             st.session_state.regions.append({"name": region_name, "description": region_description})
             st.success(f"Region '{region_name}' created!")
@@ -454,7 +464,6 @@ if mode == "World Builder":
             with exp:
                 desc = region.get("description", {})
                 if isinstance(desc, dict):
-                    # Nested description: display terrain, climate, features, quests, npcs
                     st.markdown(f"**Terrain:** {desc.get('terrain','N/A')}")
                     st.markdown(f"**Climate:** {desc.get('climate','N/A')}")
                     if 'special_features' in desc:
