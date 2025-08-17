@@ -459,7 +459,7 @@ if mode == "World Builder":
             pdf_buf = create_journal_pdf(journal_text, st.session_state.characters)
             st.download_button("Download Journal (PDF)", data=pdf_buf, file_name="world_journal.pdf", mime="application/pdf")
 
-     # --- REGIONS TAB ---
+    # --- REGIONS TAB ---
     with tab3:
         st.header("🌍 AI-Generated Regions")
     
@@ -542,6 +542,37 @@ if mode == "World Builder":
                 else:
                     st.write(desc)
     
+        # 🔽 Macro-Region synthesis if more than 5 regions
+        if len(st.session_state.regions) > 5:
+            if st.button("🔗 Synthesize Macro-Region"):
+                all_regions = st.session_state.regions
+    
+                # Merge regions with same name into one
+                merged = {}
+                for r in all_regions:
+                    name = r.get("name", "Unknown Region")
+                    desc = r.get("description", {})
+                    if name not in merged:
+                        merged[name] = {"name": name, "descriptions": []}
+                    merged[name]["descriptions"].append(desc)
+    
+                macro_region = {
+                    "name": "Macro-Region",
+                    "regions": list(merged.values())
+                }
+    
+                # Store in session
+                st.session_state.macro_region = macro_region
+                st.success("Macro-Region created!")
+    
+            if "macro_region" in st.session_state:
+                exp = st.expander("🌐 Macro-Region", expanded=True)
+                with exp:
+                    for r in st.session_state.macro_region["regions"]:
+                        st.subheader(r["name"])
+                        for d in r["descriptions"]:
+                            st.json(d)
+
         # 🔽 DOWNLOAD ALL REGIONS
         if st.session_state.regions:
             regions_json = json.dumps(st.session_state.regions, indent=2, ensure_ascii=False)
