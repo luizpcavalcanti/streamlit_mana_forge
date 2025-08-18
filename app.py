@@ -476,7 +476,6 @@ if mode == "World Builder":
             pdf_buf = create_journal_pdf(journal_text, st.session_state.characters)
             st.download_button("Download Journal (PDF)", data=pdf_buf, file_name="world_journal.pdf", mime="application/pdf")
 
-
     # --- REGIONS TAB ---
     with tab3:
         st.header("🌍 AI-Generated Regions")
@@ -515,7 +514,6 @@ if mode == "World Builder":
             )
             content = response['choices'][0]['message']['content'].strip()
     
-            # Extract JSON safely
             region_data = extract_json_from_text(content)
             if region_data:
                 region_name = region_data.get("name", "Unknown Region")
@@ -554,141 +552,148 @@ if mode == "World Builder":
                         st.markdown("**NPCs:**")
                         for npc in desc['npcs']:
                             if isinstance(npc, dict):
-                                st.markdown(f"- **{npc.get('name','')}** ({npc.get('role','')}): {npc.get('description','')}")
+                                st.markdown(f"- **{npc.get('name','')}** ({npc.get('role','')}): {npc.get('backstory','')}")
                             else:
                                 st.markdown(f"- {npc}")
                 else:
                     st.write(desc)
     
-     # 🔽 Macro-Region synthesis if more than 5 regions
-    if len(st.session_state.regions) > 5:
-        st.subheader("🌐 Macro-Region Options")
-        macro_npc_count = st.number_input("Number of additional NPCs for Macro-Region:", min_value=0, value=5, step=1)
+        # 🔽 Macro-Region synthesis if more than 5 regions
+        if len(st.session_state.regions) > 5:
+            st.subheader("🌐 Macro-Region Options")
+            macro_npc_count = st.number_input("Number of additional NPCs for Macro-Region:", min_value=0, value=5, step=1)
     
-        if st.button("🔗 Synthesize Macro-Region"):
-            all_regions = st.session_state.regions
+            if st.button("🔗 Synthesize Macro-Region"):
+                all_regions = st.session_state.regions
     
-            # Merge regions with same name into one
-            merged = {}
-            for r in all_regions:
-                name = r.get("name", "Unknown Region")
-                desc = r.get("description", {})
-                if name not in merged:
-                    merged[name] = {"name": name, "descriptions": []}
-                merged[name]["descriptions"].append(desc)
+                # Merge regions with same name into one
+                merged = {}
+                for r in all_regions:
+                    name = r.get("name", "Unknown Region")
+                    desc = r.get("description", {})
+                    if name not in merged:
+                        merged[name] = {"name": name, "descriptions": []}
+                    merged[name]["descriptions"].append(desc)
     
-            # Generate extra NPCs for macro-region
-            macro_npcs = generate_npc_names(macro_npc_count)
+                # Collect all NPCs from regions
+                region_npcs = []
+                for r in all_regions:
+                    desc = r.get("description", {})
+                    if isinstance(desc, dict) and 'npcs' in desc:
+                        for npc in desc['npcs']:
+                            region_npcs.append(npc)
     
-            # Include characters from session
-            macro_characters = [ch['character'] for ch in st.session_state.characters]
+                # Generate extra NPCs for macro-region
+                macro_npcs = region_npcs + generate_npc_names(macro_npc_count)
     
-            macro_region = {
-                "name": "Macro-Region",
-                "regions": list(merged.values()),
-                "characters": macro_characters,
-                "npcs": macro_npcs
-            }
+                # Include characters from session
+                macro_characters = [ch['character'] for ch in st.session_state.characters]
     
-            # Store in session
-            st.session_state.macro_region = macro_region
-            st.success("Macro-Region created!")
+                macro_region = {
+                    "name": "Macro-Region",
+                    "regions": list(merged.values()),
+                    "characters": macro_characters,
+                    "npcs": macro_npcs
+                }
     
-        # Show macro-region and add export options
-        if "macro_region" in st.session_state:
-            exp = st.expander("🌐 Macro-Region", expanded=True)
-            with exp:
-                # Show content
-                for r in st.session_state.macro_region["regions"]:
-                    st.subheader(r["name"])
-                    for d in r["descriptions"]:
-                        st.json(d)
+                st.session_state.macro_region = macro_region
+                st.success("Macro-Region created!")
     
-                # Show characters
-                if st.session_state.macro_region.get("characters"):
-                    st.markdown("**Characters in Macro-Region:**")
-                    for c in st.session_state.macro_region["characters"]:
-                        st.markdown(f"- {c['Name']} ({c['Race']} {c['Class']}) Background: {c['Background']}")
+            # Show macro-region and add export options
+            if "macro_region" in st.session_state:
+                exp = st.expander("🌐 Macro-Region", expanded=True)
+                with exp:
+                    # Show content
+                    for r in st.session_state.macro_region["regions"]:
+                        st.subheader(r["name"])
+                        for d in r["descriptions"]:
+                            st.json(d)
     
-                # Show NPCs
-                if st.session_state.macro_region.get("npcs"):
-                    st.markdown("**NPCs in Macro-Region:**")
-                    for npc in st.session_state.macro_region["npcs"]:
-                        st.markdown(f"- {npc['name']} ({npc['role']}): {npc['backstory']}")
+                    # Show characters
+                    if st.session_state.macro_region.get("characters"):
+                        st.markdown("**Characters in Macro-Region:**")
+                        for c in st.session_state.macro_region["characters"]:
+                            st.markdown(f"- {c['Name']} ({c['Race']} {c['Class']}) Background: {c['Background']}")
     
-                # Export Macro-Region JSON
-                macro_json = json.dumps(st.session_state.macro_region, indent=2, ensure_ascii=False)
-                st.download_button(
-                    "📥 Download Macro-Region JSON",
-                    data=macro_json,
-                    file_name="macro_region.json",
-                    mime="application/json"
-                )
+                    # Show NPCs
+                    if st.session_state.macro_region.get("npcs"):
+                        st.markdown("**NPCs in Macro-Region:**")
+                        for npc in st.session_state.macro_region["npcs"]:
+                            st.markdown(f"- {npc['name']} ({npc['role']}): {npc['backstory']}")
     
-                # Export Macro-Region PDF
-                def create_macro_pdf(macro_region):
-                    from reportlab.pdfgen import canvas
-                    from reportlab.lib.pagesizes import letter
-                    from reportlab.lib.utils import simpleSplit
-                    buffer = BytesIO()
-                    c = canvas.Canvas(buffer, pagesize=letter)
-                    width, height = letter
-                    x, y = 50, height - 50
-                    c.setFont("Helvetica-Bold", 14)
-                    c.drawString(x, y, "Macro-Region Journal")
-                    y -= 30
-                    c.setFont("Helvetica", 10)
+                    # Export Macro-Region JSON
+                    macro_json = json.dumps(st.session_state.macro_region, indent=2, ensure_ascii=False)
+                    st.download_button(
+                        "📥 Download Macro-Region JSON",
+                        data=macro_json,
+                        file_name="macro_region.json",
+                        mime="application/json"
+                    )
     
-                    def draw_text(text, x, y, max_width):
-                        lines = simpleSplit(text, "Helvetica", 10, max_width)
-                        for line in lines:
-                            c.drawString(x, y, line)
-                            y -= 12
-                            if y < 50:
-                                c.showPage()
-                                c.setFont("Helvetica", 10)
-                                y = height - 50
-                        return y
-    
-                    # Regions
-                    for region in macro_region["regions"]:
-                        c.setFont("Helvetica-Bold", 12)
-                        y = draw_text(f"Region: {region['name']}", x, y, width - 100)
+                    # Export Macro-Region PDF
+                    def create_macro_pdf(macro_region):
+                        from reportlab.pdfgen import canvas
+                        from reportlab.lib.pagesizes import letter
+                        from reportlab.lib.utils import simpleSplit
+                        buffer = BytesIO()
+                        c = canvas.Canvas(buffer, pagesize=letter)
+                        width, height = letter
+                        x, y = 50, height - 50
+                        c.setFont("Helvetica-Bold", 14)
+                        c.drawString(x, y, "Macro-Region Journal")
+                        y -= 30
                         c.setFont("Helvetica", 10)
-                        for desc in region["descriptions"]:
-                            desc_json = json.dumps(desc, indent=2, ensure_ascii=False)
-                            y = draw_text(desc_json, x + 20, y, width - 120)
     
-                    # Characters
-                    if macro_region.get("characters"):
-                        c.setFont("Helvetica-Bold", 12)
-                        y = draw_text("Characters:", x, y, width - 100)
-                        c.setFont("Helvetica", 10)
-                        for cdata in macro_region["characters"]:
-                            line = f"- {cdata['Name']} ({cdata['Race']} {cdata['Class']}) Background: {cdata['Background']}"
-                            y = draw_text(line, x + 20, y, width - 120)
+                        def draw_text(text, x, y, max_width):
+                            lines = simpleSplit(text, "Helvetica", 10, max_width)
+                            for line in lines:
+                                c.drawString(x, y, line)
+                                y -= 12
+                                if y < 50:
+                                    c.showPage()
+                                    c.setFont("Helvetica", 10)
+                                    y = height - 50
+                            return y
     
-                    # NPCs
-                    if macro_region.get("npcs"):
-                        c.setFont("Helvetica-Bold", 12)
-                        y = draw_text("NPCs:", x, y, width - 100)
-                        c.setFont("Helvetica", 10)
-                        for npc in macro_region["npcs"]:
-                            line = f"- {npc['name']} ({npc['role']}): {npc['backstory']}"
-                            y = draw_text(line, x + 20, y, width - 120)
+                        # Regions
+                        for region in macro_region["regions"]:
+                            c.setFont("Helvetica-Bold", 12)
+                            y = draw_text(f"Region: {region['name']}", x, y, width - 100)
+                            c.setFont("Helvetica", 10)
+                            for desc in region["descriptions"]:
+                                desc_json = json.dumps(desc, indent=2, ensure_ascii=False)
+                                y = draw_text(desc_json, x + 20, y, width - 120)
     
-                    c.save()
-                    buffer.seek(0)
-                    return buffer
+                        # Characters
+                        if macro_region.get("characters"):
+                            c.setFont("Helvetica-Bold", 12)
+                            y = draw_text("Characters:", x, y, width - 100)
+                            c.setFont("Helvetica", 10)
+                            for cdata in macro_region["characters"]:
+                                line = f"- {cdata['Name']} ({cdata['Race']} {cdata['Class']}) Background: {cdata['Background']}"
+                                y = draw_text(line, x + 20, y, width - 120)
     
-                pdf_buffer = create_macro_pdf(st.session_state["macro_region"])
-                st.download_button(
-                    "📖 Download Macro-Region PDF",
-                    data=pdf_buffer,
-                    file_name="macro_region.pdf",
-                    mime="application/pdf"
-                )
-            )
+                        # NPCs
+                        if macro_region.get("npcs"):
+                            c.setFont("Helvetica-Bold", 12)
+                            y = draw_text("NPCs:", x, y, width - 100)
+                            c.setFont("Helvetica", 10)
+                            for npc in macro_region["npcs"]:
+                                line = f"- {npc['name']} ({npc['role']}): {npc['backstory']}"
+                                y = draw_text(line, x + 20, y, width - 120)
+    
+                        c.save()
+                        buffer.seek(0)
+                        return buffer
+    
+                    pdf_buffer = create_macro_pdf(st.session_state["macro_region"])
+                    st.download_button(
+                        "📖 Download Macro-Region PDF",
+                        data=pdf_buffer,
+                        file_name="macro_region.pdf",
+                        mime="application/pdf"
+                    )
+    
         # 🔽 DOWNLOAD ALL REGIONS
         if st.session_state.regions:
             regions_json = json.dumps(st.session_state.regions, indent=2, ensure_ascii=False)
@@ -700,4 +705,3 @@ if mode == "World Builder":
     
             st.download_button("Download Regions (JSON)", data=regions_json, file_name="regions.json", mime="application/json")
             st.download_button("Download Regions (TXT)", data=regions_txt, file_name="regions.txt", mime="text/plain")
-
