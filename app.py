@@ -413,8 +413,7 @@ if mode == "World Builder":
                 exp = st.expander(f"Party {idx+1}: {', '.join([m['character']['Name'] for m in party['members']])}", expanded=True)
                 with exp:
                     st.text_area("Story", value=party['story'], height=200)
-
-        # --- JOURNAL TAB ---
+    # --- JOURNAL TAB ---
     with tab2:
         st.header("📓 World Journal")
     
@@ -427,6 +426,11 @@ if mode == "World Builder":
             for ch in st.session_state.characters:
                 c = ch['character']
                 journal_entries.append(f"- {c['Name']} ({c['Race']} {c['Class']}) Background: {c['Background']}")
+                
+                # Add associated NPCs for this character
+                npc = ch.get('npc')
+                if npc:
+                    journal_entries.append(f"  - NPC: {npc['name']} ({npc['role']}) - {npc.get('backstory','No backstory')}")
     
         # Party Stories
         if st.session_state.parties:
@@ -434,6 +438,18 @@ if mode == "World Builder":
             for idx, party in enumerate(st.session_state.parties):
                 journal_entries.append(f"\nParty {idx+1}: {', '.join([m['character']['Name'] for m in party['members']])}")
                 journal_entries.append(party['story'])
+    
+        # Optionally, include global or region NPCs if you have st.session_state.regions
+        if "regions" in st.session_state and st.session_state.regions:
+            journal_entries.append("\n**Region NPCs:**")
+            for region in st.session_state.regions:
+                desc = region.get("description", {})
+                npcs = desc.get("npcs", []) if isinstance(desc, dict) else []
+                for npc in npcs:
+                    if isinstance(npc, dict):
+                        journal_entries.append(f"- {npc.get('name','Unknown')} ({npc.get('role','Unknown')}): {npc.get('description','')}")
+                    else:
+                        journal_entries.append(f"- {npc}")
     
         # Store journal in session state
         st.session_state.journal_text = "\n".join(journal_entries)
@@ -459,6 +475,7 @@ if mode == "World Builder":
         with col3:
             pdf_buf = create_journal_pdf(journal_text, st.session_state.characters)
             st.download_button("Download Journal (PDF)", data=pdf_buf, file_name="world_journal.pdf", mime="application/pdf")
+
 
     # --- REGIONS TAB ---
     with tab3:
