@@ -33,21 +33,33 @@ classes = ["Fighter", "Wizard", "Rogue", "Cleric", "Barbarian", "Sorcerer", "Bar
 backgrounds = ["Acolyte", "Folk Hero", "Sage", "Criminal", "Noble", "Hermit", "Outlander", "Entertainer", "Artisan", "Sailor", "Soldier", "Charlatan", "Knight", "Pirate", "Spy", "Archaeologist", "Gladiator", "Inheritor", "Haunted One", "Bounty Hunter", "Explorer", "Watcher", "Traveler", "Phantom", "Vigilante"]
 genders = ["Male", "Female", "Non-binary"]
 image_styles = ["Standard", "8bit Style", "Anime Style"]
+    themes = ["Fantasy / Medieval", "Steampunk", "Post-Apocalyptic","Cyberpunk","Dark Fantasy","Sci-Fi"]
 
 # Generation functions
 def generate_character(name, gender, race, character_class, background):
     return {"Name": name, "Gender": gender, "Race": race, "Class": character_class, "Background": background}
 
-def generate_character_history(character, generate_history=True):
-    if generate_history:
-        prompt = f"Create a short backstory for a {character['Race']} {character['Class']} named {character['Name']}. They come from a {character['Background']} background. Include motivations and key events and locations, don't use existing names from reality"
-        response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "system", "content": "You are a creative storyteller, written in the style of George RR Martin, but not named as his characters."}, {"role": "user", "content": prompt}]
-        )
-        return response["choices"][0]["message"]["content"]
-    return ""
+def generate_character_history(character, theme=None, generate_history=True):
+    if not generate_history:
+        return ""
 
+    # Only modify prompt if a theme was selected
+    theme_text = f" The story should fit within a {theme} setting." if theme and "Default" not in theme else ""
+
+    prompt = (
+        f"Create a short backstory for a {character['Race']} {character['Class']} named {character['Name']}."
+        f" They come from a {character['Background']} background.{theme_text}"
+    )
+
+    response = openai.ChatCompletion.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You are a creative storyteller who writes lore for video game worlds."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+
+    return response["choices"][0]["message"]["content"]
 # World Builder Functions
 
 def generate_npc_names(count=10):
@@ -206,10 +218,20 @@ def generate_story(character, npc, quest):
     )
     return response['choices'][0]['message']['content']
 
-def generate_character_image(character, style="Standard"):
-    base_prompt = f"A full-body portrait of a {character['Gender']} {character['Race']} {character['Class']} with {character['Background']} vibes, heroic pose, detailed fantasy outfit."
-    if style == "8bit Style": base_prompt += " pixelated sprite art, 8-bit game style"
-    if style == "Anime Style": base_prompt += " anime art style, cel-shaded, colorful background"
+def generate_character_image(character, style="Standard", theme=None):
+    theme_text = f"in a {theme} world, " if theme and "Default" not in theme else ""
+    
+    base_prompt = (
+        f"A full-body portrait of a {character['Gender']} {character['Race']} {character['Class']}, "
+        f"{theme_text}wearing detailed clothing that matches their background. "
+        f"High-quality concept art, consistent lighting, dynamic pose."
+    )
+
+    # Keep your existing style logic
+    if style == "8bit Style": base_prompt += " Pixel art, 8-bit sprite."
+    elif style == "Anime Style": base_prompt += " Anime cel-shaded style."
+    elif style == "Realistic Style": base_prompt += " Realistic fantasy rendering."
+
     response = openai.Image.create(model="dall-e-3", prompt=base_prompt, size="1024x1024")
     return response["data"][0]["url"]
 
@@ -309,6 +331,7 @@ if mode == "Character":
     auto_generate = st.checkbox("Auto-generate class & background?", value=True)
 
     selected_style = st.selectbox("Select Art Style:", image_styles)
+    selected_theme = st.selectbox("Select World Theme (optional):", themes, index=0)
     generate_music = st.checkbox("Generate Theme Song (Audiocraft)")
     generate_turnaround = st.checkbox("Generate 360° Turnaround")
     generate_location = st.checkbox("Generate Place of Origin")
@@ -331,8 +354,11 @@ if mode == "Character":
                 background = random.choice(backgrounds)
 
             char = generate_character(name, selected_gender, selected_race, character_class, background)
-            char["History"] = generate_character_history(char, generate_history)
-            image_urls = [generate_character_image(char, selected_style)]
+            theme_to_use = None if selected_theme == "Fantasy / Medieval" else selected_theme
+            
+            char["History"] = generate_character_history(char, theme=theme_to_use, generate_history=generate_history)
+            image_urls = [generate_character_image(char, selected_style, theme=theme_to_use)]
+
             if generate_turnaround: image_urls.append(generate_character_image(char, selected_style))
             if generate_location: image_urls.append(generate_character_image(char, selected_style))
             if generate_extra:
